@@ -1,0 +1,55 @@
+[build-system]
+requires = [
+  "setuptools>=68",
+  "setuptools-scm>=8",
+  "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openedx-wikilearn-features"
+description = "Wikilearn features for Open edX"
+readme = "README.rst"
+requires-python = ">=3.12"
+license = { text = "AGPL 3.0" }
+authors = [
+  { name = "Ahmed Khalid", email = "ahmed.khalid@arbisoft.com" },
+]
+keywords = ["Python", "edx"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: Django",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5.2",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/wikimedia/openedx-wikilearn-features"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["openedx_wikilearn_features", "openedx_wikilearn_features.*"]
+exclude = ["*tests*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "openedx_wikilearn_features.__version__"}
+# Keep using requirements files to resolve constraints like in setup.py
+dependencies = {file = ["requirements/base.in"]}
+
+[tool.isort]
+include_trailing_comma = true
+indent = "    "
+line_length = 120
+multi_line_output = 3
+skip = ["migrations"]
+
+
