@@ -1,0 +1,3 @@
+"""
+Wikimedia General Views
+"""

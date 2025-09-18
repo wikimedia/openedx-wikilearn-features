@@ -1,16 +1,14 @@
 [build-system]
 requires = [
-  "setuptools>=68",
-  "setuptools-scm>=8",
-  "wheel",
+  "hatchling",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
 [project]
 name = "openedx-wikilearn-features"
 description = "Wikilearn features for Open edX"
 readme = "README.rst"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "AGPL 3.0" }
 authors = [
   { name = "Ahmed Khalid", email = "ahmed.khalid@arbisoft.com" },
@@ -25,25 +23,18 @@ classifiers = [
   "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
   "Natural Language :: English",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.11",
 ]
 dynamic = ["version", "dependencies"]
 
 [project.urls]
 Homepage = "https://github.com/wikimedia/openedx-wikilearn-features"
 
-[tool.setuptools]
-zip-safe = false
-include-package-data = true
+[tool.hatch.version]
+path = "openedx_wikilearn_features/__init__.py"
 
-[tool.setuptools.packages.find]
-include = ["openedx_wikilearn_features", "openedx_wikilearn_features.*"]
-exclude = ["*tests*"]
-
-[tool.setuptools.dynamic]
-version = {attr = "openedx_wikilearn_features.__version__"}
-# Keep using requirements files to resolve constraints like in setup.py
-dependencies = {file = ["requirements/base.in"]}
+[tool.hatch.build.hooks.custom]
+path = ".hatch_build.py"
 
 [tool.isort]
 include_trailing_comma = true
