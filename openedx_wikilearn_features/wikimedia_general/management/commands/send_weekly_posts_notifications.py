@@ -5,7 +5,7 @@ from logging import getLogger
 from django.core.management.base import BaseCommand
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 import openedx.core.djangoapps.django_comment_common.comment_client as cc
-from openedx.features.wikimedia_features.wikimedia_general.tasks import send_weekly_digest_new_post_notification_to_instructors
+from openedx_wikilearn_features.wikimedia_general.tasks import send_weekly_digest_new_post_notification_to_instructors
 
 log = getLogger(__name__)
 

@@ -1,4 +1,0 @@
-{% load i18n %}
-    {% blocktrans %}
-         Weekly digest for course: {{course_name}}.
-    {% endblocktrans %}

@@ -1,13 +1,13 @@
 """
-Forum urls for the django_comment_client.
+URLs for the general features
 """
-from django.conf.urls import url, include
+from django.urls import path, include
 
 app_name = 'wikimedia_general'
 
 urlpatterns = [
-    url(
-        r'^api/v0/',
-        include('openedx_wikilearn_features.wikimedia_general.api.v0.urls', namespace='general_api_v0')
+    path(
+        'api/v0/',
+        include(('openedx_wikilearn_features.wikimedia_general.api.v0.urls', 'general_api_v0')),
     ),
 ]

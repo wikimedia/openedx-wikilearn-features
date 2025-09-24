@@ -158,4 +158,12 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.11',
     ],
+    entry_points={
+        "lms.djangoapp": [
+            "wikimedia_general = openedx_wikilearn_features.wikimedia_general.apps:WikimediaGeneralConfig"
+        ],
+        "cms.djangoapp": [
+            "wikimedia_general = openedx_wikilearn_features.wikimedia_general.apps:WikimediaGeneralConfig",
+        ],
+    }
 )
