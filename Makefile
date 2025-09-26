@@ -7,6 +7,7 @@
 
 # For opening files in a browser. Use like: $(BROWSER)relative/path/to/file.html
 BROWSER := python -m webbrowser file://$(CURDIR)/
+SRC_DIRS = ./openedx_wikilearn_features
 
 help: ## display this help message
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -75,8 +76,16 @@ piptools: ## install pinned version of pip-compile and pip-sync
 requirements: clean_tox piptools ## install development environment requirements
 	pip-sync -q requirements/dev.txt requirements/private.*
 
-test: clean ## run tests in the current virtualenv
-	pytest
+test: test-lint test-types test-format  
+
+test-lint: ## Run code linting tests
+	ruff check ${SRC_DIRS}
+
+test-types: ## Run type checks.
+	mypy --exclude=templates --ignore-missing-imports --implicit-reexport --strict ${SRC_DIRS}
+
+test-format: ## Run code formatting tests
+	ruff format --check --diff ${SRC_DIRS}
 
 diff_cover: test ## find diff lines that need test coverage
 	diff-cover coverage.xml

@@ -4,16 +4,15 @@ Translatewiki and Transifex
 """
 import os
 import re
-import yaml
 import shutil
-from datetime import datetime
 import subprocess
-
-from i18n.execute import execute
-
-from django.core.management.base import BaseCommand
+from datetime import datetime
 from logging import getLogger
-from polib import pofile, POFile
+
+import yaml
+from django.core.management.base import BaseCommand
+from i18n.execute import execute
+from polib import POFile, pofile
 
 log = getLogger(__name__)
 

@@ -1,13 +1,12 @@
-import requests
-
 from logging import getLogger
 
+import requests
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
-from django.db.models import OuterRef, Exists, F, Value, Case, When, CharField
-from django.db.models.query import QuerySet
-from django.db.models.functions import Concat
 from django.core.management.base import BaseCommand
+from django.db import IntegrityError
+from django.db.models import Case, CharField, Exists, F, OuterRef, Value, When
+from django.db.models.functions import Concat
+from django.db.models.query import QuerySet
 
 log = getLogger(__name__)
 User = get_user_model()

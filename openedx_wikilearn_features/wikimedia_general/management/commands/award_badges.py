@@ -1,13 +1,11 @@
 import logging
 
-from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-
-from opaque_keys.edx.keys import CourseKey
-
+from django.core.management.base import BaseCommand
+from lms.djangoapps.badges.events.course_complete import course_badge_check
 from lms.djangoapps.certificates.data import CertificateStatuses
 from lms.djangoapps.certificates.models import GeneratedCertificate
-from lms.djangoapps.badges.events.course_complete import course_badge_check
+from opaque_keys.edx.keys import CourseKey
 
 LOGGER = logging.getLogger(__name__)
 
