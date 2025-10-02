@@ -1,0 +1,310 @@
+<%page expression_filter="h"/>
+<%!
+  import json
+  from django.utils.translation import gettext as _
+  from openedx.core.djangolib.js_utils import js_escaped_string, dump_js_escaped_json
+  from openedx.core.djangolib.markup import HTML, Text
+  %>
+  <%inherit file="../main.html" />
+  <%
+  course_discovery_enabled = settings.FEATURES.get('ENABLE_COURSE_DISCOVERY')
+  %>
+
+
+  <%namespace name='static' file='../static_content.html'/>
+
+  <%block name="pagetitle">${_("Reports")}</%block>
+
+  <div class="admin-dashboard">
+    <select id="select-courses" name="course_categories" class="filter-selectbox" multiple>
+      %for course in courses:
+        <option value=${course}>${course.display_name_with_default}</option>
+      %endfor
+    </select>
+
+    <div class="request-response" id="report-request-response" style="display: none"></div>
+    <div class="request-response-error" id="report-request-response-error" style="display: none"></div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>${_("Report Name")}</th>
+          <th class="action">${_("Options")}</th>
+          <th class="action">${_("Actions")}</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr class="all-courses-report">
+          <td>
+            <span class="text">${_("Quarterly courses enrollment report")}</span>
+            <span class="info-text">${_("Generate a report for last quarter enrollments of all courses.")}</span>
+          </td>
+          <td class="d-flex align-items-center p-3">
+            <select name="enrollment-year" id="select-enrollment-year" class="quarterly-selector">
+              <option value="">${_("Select Year")}</option>
+              %for year in year_options:
+                <option value=${year}>${year}</option>
+              %endfor
+            </select>
+            <select name="enrollment-quarter" id="select-enrollment-quarter" class="ml-1 quarterly-selector">
+              <option value="">${_("Select Quarter")}</option>
+            </select>
+          </td>
+          <td class="action">
+
+            <button
+              name="courses-enrollments-csv"
+              class="btn btn-primary"
+              value="${_("Generate Average Grade Report")}"
+              data-endpoint="${ section_data['key']['courses_enrollments_csv_url'] }"
+            >${_("Generate")}</button>
+          </td>
+        </tr>
+        <tr class="all-courses-report">
+          <td>
+            <span class="text">${_("All courses enrollment report")}</span>
+            <span class="info-text">${_("Generate an all time report of enrollment/completion for all courses.")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <button
+              name="all-courses-enrollments-csv"
+              class="btn btn-primary"
+              value="${_("Generate Courses Enrollment Report")}"
+              data-endpoint="${ section_data['key']['all_courses_enrollments_csv_url'] }"
+            >${_("Generate")}</button>
+          </td>
+        </tr>
+        <tr class="all-courses-report">
+          <td>
+            <span class="text">${_("Users preferred language report")}</span>
+            <span class="info-text">${_("Generate a report on users preferred lanugage. Displays N/A for users who have not selected a lanugage")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <button
+              name="user-pref-lang-csv"
+              class="btn btn-primary"
+              value="${_("Generate Users Preferred Language Report")}"
+              data-endpoint="${ section_data['key']['user_pref_lang_csv_url'] }"
+            >${_("Generate")}</button>
+          </td>
+        </tr>
+        <tr class="all-courses-report">
+          <td>
+            <span class="text">${_("All Users enrollment report")}</span>
+            <span class="info-text">${_("Generates a report on users enrollments and their completed courses")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <button
+              name="users-enrollment-csv"
+              class="btn btn-primary"
+              value="${_("Generate Users Enrollment Report")}"
+              data-endpoint="${ section_data['key']['users_enrollment_url'] }"
+            >${_("Generate")}</button>
+          </td>
+        </tr>
+        <tr class="all-courses-report">
+          <td>
+            <span class="text">${_("Enrollment activity report")}</span>
+            <span class="info-text">${_("Generates an expanded report of user's enrollments and course completion dates")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <button
+              name="enrollment-activity-csv"
+              class="btn btn-primary"
+              value="${_("Generate Users Enrollment Report")}"
+              data-endpoint="${ section_data['key']['enrollment_activity_url'] }"
+            >${_("Generate")}</button>
+          </td>
+        </tr>
+        <tr class="single-course-report">
+          <td>
+            <span class="text">${_("List profile information for enrolled students")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="list-profiles-csv"
+              data-endpoint="${ section_data['key']['get_students_features_url'] }"
+              data-csv="true"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="single-course-report">
+          <td>
+            <span class="text">${_("Grade report for all currently enrolled students")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="calculate-grades-csv"
+              data-endpoint="${ section_data['key']['calculate_grades_csv_url'] }"
+            >${_("Generate")}</button>
+          </div>
+          </td>
+        </tr>
+        <tr class="single-course-report">
+          <td>
+            <span class="text">${_("Anonymized student ID's")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a course to generate this report">
+            <button
+              name="list-anon-ids"
+              data-csv="true"
+              data-endpoint="${ section_data['key']['get_anon_ids_url'] }"
+              class="btn btn-primary ${'is-disabled' if disable_buttons else ''}"
+              disabled
+              aria-disabled="${'true' if disable_buttons else 'false'}"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="single-course-report">
+          <td>
+            <span class="text">${_("Problem Grade report for all currently enrolled students")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="problem-grade-report"
+              data-endpoint="${ section_data['key']['problem_grade_report_url'] }"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="single-course-report">
+          <td>
+            <span class="text">${_("Progress report for all currently enrolled students")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="progress-report-csv"
+              data-endpoint="${ section_data['key']['progress_report_csv_url'] }"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="course-version-report">
+          <td>
+            <span class="text">${_("Course version report (detailed - per course)")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a base course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="course-version-report-detailed"
+              data-endpoint="${ section_data['key']['course_version_report_url'] }"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="course-version-report">
+          <td>
+            <span class="text">${_("Course version report (aggregate)")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select a base course to generate this report">
+            <button
+              class="btn btn-primary"
+              disabled
+              name="course-version-report-total"
+              data-endpoint="${ section_data['key']['course_version_report_url'] }"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="multiple-course-report">
+          <td>
+            <span class="text">${_("Average grade report for multiple courses")}</span>
+            <span class="info-text">${_("Different grading schemes can affect the comparison.")}</span>
+          </td>
+          <td></td>
+          <td class="action">
+            <div class="div-tooltip" title="Select multiple courses to generate this report">
+            <button
+              name="average-calculate-grades-csv"
+              class="btn btn-primary"
+              disabled
+              value="${_("Generate Average Grade Report")}"
+              data-endpoint="${ section_data['key']['average_calculate_grades_csv_url'] }"
+            >${_("Generate")}</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="download-section" style="display: none;">
+      <h3 class="hd hd-3">${_("Reports Available for Generate")}</h3>
+      <p>${_("The reports listed below are available for download, identified by UTC date and time of generation.")}</p>
+      <div>
+        <ul
+          class="report-downloads-list"
+          id="report-downloads-list"
+          data-endpoint="${ section_data['key']['list_report_downloads_url'] }"
+          style="display: none;"
+        ></ul>
+      </div>
+      <div class="info-text">
+        ${Text(_("{strong_start}Note{strong_end}: {ul_start}{li_start}To keep student data secure, you cannot save or email these links for direct access. Copies of links expire within 5 minutes.{li_end}{li_start}Report files are deleted 90 days after generation. If you will need access to old reports, download and store the files, in accordance with your institution's data security policies.{li_end}{ul_end}")).format(
+            strong_start=HTML("<strong>"),
+            strong_end=HTML("</strong>"),
+            ul_start=HTML("<ul>"),
+            ul_end=HTML("</ul>"),
+            li_start=HTML("<li>"),
+            li_end=HTML("</li>"),
+        )}
+      </div>
+    </div>
+    <div class="running-tasks-container action-type-container">
+      <hr>
+      <h3 class="hd hd-3"> ${_("Pending Tasks")} </h3>
+      <div class="running-tasks-section">
+          <p>${_("The status for any active tasks appears in the list below.")} </p>
+          <br />
+          <div>
+            <ul
+            class="pending-tasks"
+            id="pending-tasks"
+            style="display: none;"
+            >
+            </ul>
+          </div>
+      </div>
+      <div class="no-pending-tasks-message"></div>
+  </div>
+    <div style="display: none" id="base_courses_list">${ base_courses_list }</div>
+  </div>
+<%block name="head_extra">
+    <link rel="stylesheet" type="text/css" href="/static/css/select2.min.css" />
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css" />
+</%block>
+<script>
+  $(function(){
+      var base_courses_list = '${ base_courses_list |n, dump_js_escaped_json }';
+  });
+</script>
+<script type="text/javascript" src="${static.url('admin_dashboard/js/select2.min.js')}"></script>
+<script type="text/javascript" src="${static.url('admin_dashboard/js/course_reports.js')}"></script>

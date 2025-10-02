@@ -7,8 +7,10 @@ from functools import reduce
 import pytz
 import six
 from common.djangoapps.student.models import CourseEnrollment
-from common.djangoapps.student.roles import CourseInstructorRole, CourseStaffRole
-from common.djangoapps.student.views import get_course_enrollments, get_org_black_and_whitelist_for_site
+from common.djangoapps.student.views import (
+    get_course_enrollments,
+    get_org_black_and_whitelist_for_site,
+)
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -17,13 +19,13 @@ from django.test import RequestFactory
 from lms.djangoapps.certificates.models import CertificateStatuses, GeneratedCertificate
 from lms.djangoapps.courseware.courses import get_course_with_access
 from lms.djangoapps.discussion.django_comment_client.utils import add_courseware_context
-from lms.djangoapps.discussion.notification_prefs import WEEKLY_NOTIFICATION_PREF_KEY
+
+# from lms.djangoapps.discussion.notification_prefs import WEEKLY_NOTIFICATION_PREF_KEY
 from lms.djangoapps.grades.api import CourseGradeFactory
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration.models import SiteConfiguration
-from openedx.core.djangoapps.user_api.models import UserPreference
 from openedx.features.course_experience.utils import get_course_outline_block_tree
 from xmodule.modulestore.django import modulestore
 
@@ -60,7 +62,10 @@ def is_course_graded(course_id, user, request=None):
 
 def is_discussion_notification_configured_for_site(site, post_id):
     if site is None:
-        log.info("Discussion: No current site, not sending notification about new thread: %s.", post_id)
+        log.info(
+            "Discussion: No current site, not sending notification about new thread: %s.",
+            post_id,
+        )
         return False
     try:
         if not site.configuration.get_value(ENABLE_FORUM_NOTIFICATIONS_FOR_SITE_KEY, False):
@@ -74,41 +79,42 @@ def is_discussion_notification_configured_for_site(site, post_id):
     return True
 
 
-def get_course_users_with_preference(post_id):
-    """
-    Fetches users associated with a course who have a specific subscribed to weekly digest.
-
-    This function combines all active students, instructors, and staff members associated with a course and filters
-    them based on whether they have a specific user preference (identified by preference_key) set to true.
-
-    Args:
-        post_id (str): The unique identifier for the course.
-        preference_key (str): The user preference key to filter users by (e.g., 'WEEKLY_NOTIFICATION_PREF_KEY').
-
-    Returns:
-        list: A list of User objects who have the specified preference set. These users include students, instructors,
-        and staff.
-    """
-    course_key = CourseKey.from_string(post_id)
-    log.info(f"Fetching users with forum roles for course_key: {course_key}")
-
-    enrollments = CourseEnrollment.objects.filter(course_id=course_key, is_active=True).select_related("user")
-
-    # Extract the User objects from the enrollments
-    enrolled_users = {enrollment.user for enrollment in enrollments}
-
-    # Fetch instructors and staff members
-    instructors = set(CourseInstructorRole(course_key).users_with_role())
-    staff_members = set(CourseStaffRole(course_key).users_with_role())
-
-    # Combine all sets to ensure uniqueness
-    users_set = enrolled_users.union(instructors, staff_members)
-    users_with_preference = [user for user in users_set if UserPreference.has_value(user, WEEKLY_NOTIFICATION_PREF_KEY)]
-
-    # Convert the set to a list
-    users_list = list(users_with_preference)
-
-    return users_list
+# def get_course_users_with_preference(post_id):
+#     """
+#     Fetches users associated with a course who have a specific subscribed to weekly digest.
+#
+#     This function combines all active students, instructors, and staff members associated with a course and filters
+#     them based on whether they have a specific user preference (identified by preference_key) set to true.
+#
+#     Args:
+#         post_id (str): The unique identifier for the course.
+#         preference_key (str): The user preference key to filter users by (e.g., 'WEEKLY_NOTIFICATION_PREF_KEY').
+#
+#     Returns:
+#         list: A list of User objects who have the specified preference set. These users include students, instructors,
+#         and staff.
+#     """
+#     course_key = CourseKey.from_string(post_id)
+#     log.info(f"Fetching users with forum roles for course_key: {course_key}")
+#
+#     enrollments = CourseEnrollment.objects.filter(course_id=course_key, is_active=True).select_related("user")
+#
+#     # Extract the User objects from the enrollments
+#     enrolled_users = {enrollment.user for enrollment in enrollments}
+#
+#     # Fetch instructors and staff members
+#     instructors = set(CourseInstructorRole(course_key).users_with_role())
+#     staff_members = set(CourseStaffRole(course_key).users_with_role())
+#
+#     # Combine all sets to ensure uniqueness
+#     users_set = enrolled_users.union(instructors, staff_members)
+#     users_with_preference = \
+#         [user for user in users_set if UserPreference.has_value(user, WEEKLY_NOTIFICATION_PREF_KEY)]
+#
+#     # Convert the set to a list
+#     users_list = list(users_with_preference)
+#
+#     return users_list
 
 
 def get_mentioned_users_list(input_string, users_list=None):
@@ -202,7 +208,10 @@ def get_users_enrollment_stats(users_enrollments, course_keys):
         students_enrolled_in_any_course
         students_enrolled_in_all_courses
     """
-    enrollment_stats = {"students_enrolled_in_any_course": 0, "students_enrolled_in_all_courses": 0}
+    enrollment_stats = {
+        "students_enrolled_in_any_course": 0,
+        "students_enrolled_in_all_courses": 0,
+    }
     for enrollments in users_enrollments.values():
         if enrollments:  # If user has any enrollments
             enrollment_stats["students_enrolled_in_any_course"] += 1
@@ -221,9 +230,15 @@ def get_users_course_completion_stats(users, users_enrollments, course_keys):
     users_course_completion = dict()
     for user in users:
         users_course_completion[user.id] = set(
-            filter(lambda course_key: is_course_completed(user, course_key), users_enrollments[user.id])
+            filter(
+                lambda course_key: is_course_completed(user, course_key),
+                users_enrollments[user.id],
+            )
         )
-    course_completion_stats = {"students_completed_any_course": 0, "students_completed_all_courses": 0}
+    course_completion_stats = {
+        "students_completed_any_course": 0,
+        "students_completed_all_courses": 0,
+    }
     for course_completions in users_course_completion.values():
         if course_completions:
             course_completion_stats["students_completed_any_course"] += 1

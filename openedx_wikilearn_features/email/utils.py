@@ -12,7 +12,9 @@ from django.utils.timezone import localtime
 from edx_ace import ace
 from edx_ace.recipient import Recipient
 from lms.djangoapps.discussion.tasks import _get_thread_url
-from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
+from openedx.core.djangoapps.ace_common.template_context import (
+    get_base_template_context,
+)
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.lib.celery.task_utils import emulate_http_request
 
@@ -22,11 +24,13 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 MESSAGE_TYPES = {
-  'pending_messages': message_types.PendingMessagesNotification,
-  'thread_mention': message_types.ThreadMentionNotification,
-  'report_ready': message_types.ReportReadyNotification,
-  'thread_creation': message_types.ThreadCreationNotification
+    "pending_messages": message_types.PendingMessagesNotification,
+    "thread_mention": message_types.ThreadMentionNotification,
+    "report_ready": message_types.ReportReadyNotification,
+    "thread_creation": message_types.ThreadCreationNotification,
 }
+
+
 def send_weekly_digest_ace_message(request_user, request_site, dest_email, notification_context, message_class):
     """
     Send a single ACE message that includes a list of contexts.
@@ -37,15 +41,15 @@ def send_weekly_digest_ace_message(request_user, request_site, dest_email, notif
         notification_context - Dictionary containing common context and a list of thread contexts
         message_class - The ACE message type class to be used for sending the email
     """
-    
+
     # Ensure notification_context is a dictionary
     if not isinstance(notification_context, dict):
         logger.error("notification_context should be a dictionary")
         return
 
-    common_context = notification_context.get('common_context', {})
-    thread_contexts = notification_context.get('thread_contexts', [])
-    
+    common_context = notification_context.get("common_context", {})
+    thread_contexts = notification_context.get("thread_contexts", [])
+
     if not isinstance(thread_contexts, list):
         logger.error("thread_contexts should be a list of dictionaries")
         return
@@ -53,47 +57,62 @@ def send_weekly_digest_ace_message(request_user, request_site, dest_email, notif
     # Preprocess the thread_contexts to group by location
     grouped_contexts = {}
     for context in thread_contexts:
-        location = context.get('location', 'General Discussion')
+        location = context.get("location", "General Discussion")
         if location not in grouped_contexts:
             grouped_contexts[location] = {
-                'unit_name': context.get('unit_name', 'General Discussion'),
-                'first_post_link': context.get('post_link', '#'),
-                'courseware_url': context.get('courseware_url', '#'),
-                'threads': [],
-                'base_url': context.get('post_link').rsplit('/threads', 1)[0] if location == 'General Discussion' else None,
+                "unit_name": context.get("unit_name", "General Discussion"),
+                "first_post_link": context.get("post_link", "#"),
+                "courseware_url": context.get("courseware_url", "#"),
+                "threads": [],
+                "base_url": (
+                    context.get("post_link").rsplit("/threads", 1)[0] if location == "General Discussion" else None
+                ),
             }
-        grouped_contexts[location]['threads'].append(context)
-    
+        grouped_contexts[location]["threads"].append(context)
+
     # Flatten the grouped contexts into a list
-    sorted_contexts = [{'location': loc, 'unit_name': data['unit_name'], 'first_post_link': data['first_post_link'], 'courseware_url': data['courseware_url'], 'threads': data['threads'], 'base_url': data['base_url']} for loc, data in grouped_contexts.items()]
-    
+    sorted_contexts = [
+        {
+            "location": loc,
+            "unit_name": data["unit_name"],
+            "first_post_link": data["first_post_link"],
+            "courseware_url": data["courseware_url"],
+            "threads": data["threads"],
+            "base_url": data["base_url"],
+        }
+        for loc, data in grouped_contexts.items()
+    ]
+
     # Merge common context into the unified context
-    unified_context = {**common_context, 'grouped_thread_contexts': sorted_contexts}
-    
+    unified_context = {**common_context, "grouped_thread_contexts": sorted_contexts}
+
     with emulate_http_request(site=request_site, user=request_user):
         message = message_class().personalize(
             recipient=Recipient(lms_user_id=0, email_address=dest_email),
-            language='en',
+            language="en",
             user_context=unified_context,
         )
         try:
-            logger.info('Sending email notification with unified contexts')
+            logger.info("Sending email notification with unified contexts")
             ace.send(message)
-            return True 
+            return True
         except Exception as e:
-            logger.error('Error sending email to %s with unified contexts. Error: %s', dest_email, e)
+            logger.error(
+                "Error sending email to %s with unified contexts. Error: %s",
+                dest_email,
+                e,
+            )
             return False
-
 
 
 def send_ace_message(request_user, request_site, dest_email, context, message_class):
     with emulate_http_request(site=request_site, user=request_user):
         message = message_class().personalize(
             recipient=Recipient(lms_user_id=0, email_address=dest_email),
-            language='en',
+            language="en",
             user_context=context,
         )
-        logger.info('Sending email notification with context %s', context)
+        logger.info("Sending email notification with context %s", context)
         ace.send(message)
 
 
@@ -117,11 +136,13 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
             request_user = User.objects.get(username=settings.EMAIL_ADMIN)
         except User.DoesNotExist:
             logger.error(
-                "Unable to send email as Email Admin User with username: {} does not exist.".format(settings.EMAIL_ADMIN)
+                "Unable to send email as Email Admin User with username: {} does not exist.".format(
+                    settings.EMAIL_ADMIN
+                )
             )
             return
 
-    data.update({'subject': subject})
+    data.update({"subject": subject})
 
     message_context = get_base_template_context(current_site)
     message_context.update(data)
@@ -130,35 +151,39 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
     message_class = MESSAGE_TYPES[message_type]
     return_value = True
 
-    base_root_url = current_site.configuration.get_value('LMS_ROOT_URL')
+    base_root_url = current_site.configuration.get_value("LMS_ROOT_URL")
 
-    message_context.update({
-        "site_name":  current_site.configuration.get_value('platform_name'),
-        "logo_url": current_site.configuration.get_value('DEFAULT_EMAIL_LOGO_URL', settings.DEFAULT_EMAIL_LOGO_URL),
-        "messenger_url": u'{base_url}{messenger_path}'.format(base_url=base_root_url, messenger_path=reverse("messenger:messenger_home"))
-    })
+    message_context.update(
+        {
+            "site_name": current_site.configuration.get_value("platform_name"),
+            "logo_url": current_site.configuration.get_value("DEFAULT_EMAIL_LOGO_URL", settings.DEFAULT_EMAIL_LOGO_URL),
+            "messenger_url": "{base_url}{messenger_path}".format(
+                base_url=base_root_url,
+                messenger_path=reverse("messenger:messenger_home"),
+            ),
+        }
+    )
     for email in dest_emails:
-        message_context.update({
-            "email": email
-        })
+        message_context.update({"email": email})
         try:
             send_ace_message(request_user, current_site, email, message_context, message_class)
-            logger.info(
-                'Email has been sent to "%s" for content %s.',
-                email,
-                content
-            )
+            logger.info('Email has been sent to "%s" for content %s.', email, content)
         except Exception as e:
-            logger.error(
-                'Unable to send an email to %s for content "%s"',
-                email,
-                content
-            )
+            logger.error('Unable to send an email to %s for content "%s"', email, content)
             logger.error(e)
             return_value = False
 
     return return_value
-def send_weekly_digest_notification(message_type, notification_context, subject, dest_emails, request_user=None, current_site=None):
+
+
+def send_weekly_digest_notification(
+    message_type,
+    notification_context,
+    subject,
+    dest_emails,
+    request_user=None,
+    current_site=None,
+):
     """
     Sends a weekly digest email of all threads created in a week to a list of recipients based on the specified data.
 
@@ -170,8 +195,10 @@ def send_weekly_digest_notification(message_type, notification_context, subject,
         notification_context (dict): A dictionary containing common context and a list of thread contexts.
         subject (str): The subject line of the email to be sent.
         dest_emails (list of str): A list of email addresses to which the emails will be sent.
-        request_user (User, optional): The user from whose context the email is sent. Defaults to the EMAIL_ADMIN user if not provided.
-        current_site (Site, optional): The site from which the email is sent. Defaults to the first Site object if not provided.
+        request_user (User, optional): The user from whose context the email is sent.
+        Defaults to the EMAIL_ADMIN user if not provided.
+        current_site (Site, optional): The site from which the email is sent.
+        Defaults to the first Site object if not provided.
 
     Returns:
         bool: True if all emails are successfully sent, False if any email fails to send.
@@ -187,45 +214,57 @@ def send_weekly_digest_notification(message_type, notification_context, subject,
             request_user = User.objects.get(username=settings.EMAIL_ADMIN)
         except User.DoesNotExist:
             logger.error(
-                "Unable to send email as Email Admin User with username: {} does not exist.".format(settings.EMAIL_ADMIN)
+                "Unable to send email as Email Admin User with username: {} does not exist.".format(
+                    settings.EMAIL_ADMIN
+                )
             )
             return False
 
-    common_context = notification_context.get('common_context', {})
-    thread_contexts = notification_context.get('thread_contexts', [])
+    common_context = notification_context.get("common_context", {})
+    thread_contexts = notification_context.get("thread_contexts", [])
 
-    base_root_url = current_site.configuration.get_value('LMS_ROOT_URL')
-    platform_name = current_site.configuration.get_value('platform_name')
-    logo_url = current_site.configuration.get_value('DEFAULT_EMAIL_LOGO_URL', settings.DEFAULT_EMAIL_LOGO_URL)
-    messenger_url = u'{base_url}{messenger_path}'.format(base_url=base_root_url, messenger_path=reverse("messenger:messenger_home"))
+    base_root_url = current_site.configuration.get_value("LMS_ROOT_URL")
+    platform_name = current_site.configuration.get_value("platform_name")
+    logo_url = current_site.configuration.get_value("DEFAULT_EMAIL_LOGO_URL", settings.DEFAULT_EMAIL_LOGO_URL)
+    messenger_url = "{base_url}{messenger_path}".format(
+        base_url=base_root_url, messenger_path=reverse("messenger:messenger_home")
+    )
 
     base_template_context = get_base_template_context(current_site)
     common_context.update(base_template_context)
-    common_context.update({
-        'subject': subject,
-        'site_name': platform_name,
-        'logo_url': logo_url,
-        'messenger_url': messenger_url
-    })
+    common_context.update(
+        {
+            "subject": subject,
+            "site_name": platform_name,
+            "logo_url": logo_url,
+            "messenger_url": messenger_url,
+        }
+    )
 
     for email in dest_emails:
-        common_context.update({ 'email': email})
+        common_context.update({"email": email})
         email_context = {
-            'common_context': common_context,
-            'thread_contexts': thread_contexts,
+            "common_context": common_context,
+            "thread_contexts": thread_contexts,
         }
         try:
-            send_weekly_digest_ace_message(request_user, current_site, email, email_context, message_class=MESSAGE_TYPES[message_type])
+            send_weekly_digest_ace_message(
+                request_user,
+                current_site,
+                email,
+                email_context,
+                message_class=MESSAGE_TYPES[message_type],
+            )
             logger.info(
                 'Email has been sent to "%s" for content %s.',
                 email,
-                json.dumps(email_context)
+                json.dumps(email_context),
             )
         except Exception as e:
             logger.error(
                 'Unable to send an email to %s for content "%s"',
                 email,
-                json.dumps(email_context)
+                json.dumps(email_context),
             )
             logger.error(e)
             return False
@@ -233,46 +272,53 @@ def send_weekly_digest_notification(message_type, notification_context, subject,
     return True
 
 
-
-
 def update_context_with_thread(context, thread):
     thread_author = User.objects.get(id=thread.user_id)
-    logger.info("thread_author.username is :%s",thread_author.username)
+    logger.info("thread_author.username is :%s", thread_author.username)
     created_at_datetime = datetime.strptime(thread.created_at, "%Y-%m-%dT%H:%M:%SZ")
     created_at_datetime = created_at_datetime.replace(tzinfo=pytz.utc)
     formatted_date = localtime(created_at_datetime).date()
-    formatted_date = formatted_date.strftime('%Y-%m-%d')
-    context.update({
-        'thread_id': thread.id,
-        'thread_title': thread.title,
-        'thread_body': markdown.markdown(thread.body),
-        'thread_commentable_id': thread.commentable_id,
-        'thread_author_id': thread_author.id,
-        'thread_username': thread_author.username,
-        'thread_created_at': formatted_date
-    })
+    formatted_date = formatted_date.strftime("%Y-%m-%d")
+    context.update(
+        {
+            "thread_id": thread.id,
+            "thread_title": thread.title,
+            "thread_body": markdown.markdown(thread.body),
+            "thread_commentable_id": thread.commentable_id,
+            "thread_author_id": thread_author.id,
+            "thread_username": thread_author.username,
+            "thread_created_at": formatted_date,
+        }
+    )
+
 
 def update_context_with_comment(context, comment):
     comment_author = User.objects.get(id=comment.user_id)
-    context.update({
-        'comment_id': comment.id,
-        'comment_body': markdown.markdown(comment.body),
-        'comment_author_id': comment_author.id,
-        'comment_username': comment_author.username,
-        'comment_created_at': comment.created_at
-    })
+    context.update(
+        {
+            "comment_id": comment.id,
+            "comment_body": markdown.markdown(comment.body),
+            "comment_author_id": comment_author.id,
+            "comment_username": comment_author.username,
+            "comment_created_at": comment.created_at,
+        }
+    )
+
 
 def build_discussion_notification_context(context):
-    site = context['site']
+    site = context["site"]
     message_context = get_base_template_context(site)
     message_context.update(context)
-    message_context.update({
-        'site_id': site.id,
-        'post_link': _get_thread_url(context),
-        'course_name': CourseOverview.get_from_id(message_context.pop('course_id')).display_name
-    })
-    message_context.pop('site')
+    message_context.update(
+        {
+            "site_id": site.id,
+            "post_link": _get_thread_url(context),
+            "course_name": CourseOverview.get_from_id(message_context.pop("course_id")).display_name,
+        }
+    )
+    message_context.pop("site")
     return message_context
+
 
 def send_unread_messages_email(user, user_context):
     subject = "Unread Messages"
@@ -281,9 +327,12 @@ def send_unread_messages_email(user, user_context):
     name = user.username
     if user.first_name:
         name = user.first_name + " " + user.last_name
-    data = {"name": name,}
+    data = {
+        "name": name,
+    }
     data.update(user_context)
     send_notification(key, data, subject, [user.email])
+
 
 def send_thread_mention_email(receivers, context, is_thread=True):
     logger.info("Sending thread mention email to users: {}".format(receivers))
@@ -294,11 +343,14 @@ def send_thread_mention_email(receivers, context, is_thread=True):
     else:
         mentioned_by = context.get("comment_username")
 
-    context.update({
-        "mentioned_by": mentioned_by,
-    })
+    context.update(
+        {
+            "mentioned_by": mentioned_by,
+        }
+    )
 
     send_notification(key, context, "", receivers)
+
 
 def send_thread_creation_email(receivers, notification_context, is_thread=True):
     """
@@ -309,17 +361,19 @@ def send_thread_creation_email(receivers, notification_context, is_thread=True):
         notification_context (dict): Context information including common context and thread-specific contexts.
         is_thread (bool, optional): True if notifying about threads, adjusts email content. Defaults to True.
 
-    Sends an email to each address in receivers for each context provided. The function logs the action and uses 
+    Sends an email to each address in receivers for each context provided. The function logs the action and uses
     'send_weekly_digest_notification' for email dispatch.
     """
     logger.info("Sending thread creation emails to users: {}".format(receivers))
     key = "thread_creation"
 
-    for context in notification_context['thread_contexts']:
+    for context in notification_context["thread_contexts"]:
         if is_thread:
             created_by = context.get("thread_username")
-            context.update({
-                "created_by": created_by,
-            })
+            context.update(
+                {
+                    "created_by": created_by,
+                }
+            )
 
     send_weekly_digest_notification(key, notification_context, "", receivers)

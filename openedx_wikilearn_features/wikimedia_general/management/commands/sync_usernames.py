@@ -14,14 +14,16 @@ User = get_user_model()
 
 class Command(BaseCommand):
     """
-    Django management command to sync user usernames with guessed usernames, which is a combination of the first and last names, under the following conditions:
+    Django management command to sync user usernames with guessed usernames,
+    which is a combination of the first and last names, under the following conditions:
         * The guessed username did not match any user on Wikilearn.
         * The current username did not match any user on Wikimedia.
         * The guessed username matched a profile on Wikimedia.
     The command will not update users under these conditions:
         * The Wikilearn username matches a different profile on Wikimedia.
         * The guessed username does not match any user on Wikimedia.
-    Please note that there is a rare scenario where the guessed username might match a user on Wikimedia, which could lead to unexpected behavior.
+    Please note that there is a rare scenario where the guessed username might match a user on Wikimedia,
+    which could lead to unexpected behavior.
     """
 
     help = "Matches the usernames with Wikimedia and updates the changed ones in Wikilearn"
@@ -85,16 +87,25 @@ class Command(BaseCommand):
                 wiki_username=Case(
                     When(last_name="", then=F("first_name")),
                     When(last_name__isnull=True, then=F("first_name")),
-                    default=Concat(F("first_name"), Value(" "), F("last_name"), output_field=CharField()),
+                    default=Concat(
+                        F("first_name"),
+                        Value(" "),
+                        F("last_name"),
+                        output_field=CharField(),
+                    ),
                     output_field=CharField(),
                 )
             )
             .exclude(first_name__isnull=True)
             .exclude(first_name="")
-            # The following exclude ensures that no users are selected whose `wiki_username` matches any existing `username`.
+            # The following exclude ensures that no users are selected whose `wiki_username`
+            # matches any existing `username`.
             # This is crucial for two reasons:
-            # 1. Avoid Duplication Error: If we try to update a user's `username` to a `wiki_username` that matches another user's existing `username`, it would cause a unique constraint violation in the database.
-            # 2. Self-Match Redundancy: Because no point in updating username with wiki_username later if it is already same.
+            # 1. Avoid Duplication Error: If we try to update a user's `username` to a
+            # `wiki_username` that matches another user's existing `username`,
+            # it would cause a unique constraint violation in the database.
+            # 2. Self-Match Redundancy: Because no point in updating username
+            # with wiki_username later if it is already same.
             .exclude(Exists(matching_users))
         )
 
@@ -162,12 +173,12 @@ class Command(BaseCommand):
         Returns:
             bool: True if the username exists in Wikimedia, False otherwise.
         """
-        USERNAME_VERIFY_URL = f"https://en.wikipedia.org/wiki/Special:CentralAuth?target={username}"
-        ERROR_MSG = "There is no global account for"
+        username_verify_url = f"https://en.wikipedia.org/wiki/Special:CentralAuth?target={username}"
+        error_msg = "There is no global account for"
 
-        response = requests.get(USERNAME_VERIFY_URL)
+        response = requests.get(username_verify_url)
 
-        return ERROR_MSG not in response.text
+        return error_msg not in response.text
 
     def _update_user(self, user: User) -> bool:
         """

@@ -32,7 +32,9 @@ from openedx_wikilearn_features.email.utils import (
     update_context_with_comment,
     update_context_with_thread,
 )
-from openedx_wikilearn_features.wikimedia_general.tasks import send_thread_mention_email_task
+from openedx_wikilearn_features.wikimedia_general.tasks import (
+    send_thread_mention_email_task,
+)
 
 logger = getLogger(__name__)
 
@@ -48,11 +50,15 @@ def upload_course_default_image(sender, instance, created, **kwargs):
                 with open(file_path, "rb") as file:
                     content_type, _ = mimetypes.guess_type(file_path)
                     django_file = SimpleUploadedFile(
-                        name=os.path.basename(file_path), content=file.read(), content_type=content_type
+                        name=os.path.basename(file_path),
+                        content=file.read(),
+                        content_type=content_type,
                     )
-                    from cms.djangoapps.contentstore.views.assets import update_course_run_asset
+                    from cms.djangoapps.contentstore.views.assets import (
+                        update_course_run_asset,
+                    )
 
-                    content = update_course_run_asset(course_key, django_file)
+                    content = update_course_run_asset(course_key, django_file)  # noqa: F841
                     logger.info("File processing completed for course: %s", course_key)
             else:
                 logger.error("File does not exist at path: %s", file_path)

@@ -7,7 +7,9 @@ from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from lms.djangoapps.discussion.tasks import _get_thread_url_weekly_digest
 from opaque_keys.edx.keys import CourseKey
-from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
+from openedx.core.djangoapps.ace_common.template_context import (
+    get_base_template_context,
+)
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.theming.helpers import get_current_site
 
@@ -142,7 +144,10 @@ def send_weekly_digest_new_post_notification_to_instructors(threads):
         context = get_base_template_context(current_site)
         context.update(thread_context)
         context.update(
-            {"site_id": current_site.id, "post_link": _get_thread_url_weekly_digest(thread_context, common_context)}
+            {
+                "site_id": current_site.id,
+                "post_link": _get_thread_url_weekly_digest(thread_context, common_context),
+            }
         )
 
         thread_contexts.append(context)

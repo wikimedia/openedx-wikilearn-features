@@ -76,7 +76,7 @@ piptools: ## install pinned version of pip-compile and pip-sync
 requirements: clean_tox piptools ## install development environment requirements
 	pip-sync -q requirements/dev.txt requirements/private.*
 
-test: test-lint test-types test-format  
+test: test-lint test-types test-format
 
 test-lint: ## Run code linting tests
 	ruff check ${SRC_DIRS}
