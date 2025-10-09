@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.dispatch import receiver
 
 
-from openedx.features.wikimedia_features.messenger.models import Inbox, Message
+from openedx_wikilearn_features.messenger.models import Inbox, Message
 
 
 @receiver(post_save, sender=Message)

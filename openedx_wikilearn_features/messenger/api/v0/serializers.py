@@ -4,9 +4,9 @@ Serializers for Messenger v0 API(s)
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from rest_framework import serializers
-from openedx.features.wikimedia_features.messenger.models import Inbox, Message
+from openedx_wikilearn_features.messenger.models import Inbox, Message
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user
 
 

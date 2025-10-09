@@ -1,9 +1,9 @@
 """
 Urls for Messenger v0 API(s)
 """
-from django.conf.urls import url
+from django.urls import re_path
 
-from openedx.features.wikimedia_features.messenger.api.v0.views import (
+from openedx_wikilearn_features.messenger.api.v0.views import (
     InboxView, ConversationView, MessageCreateView, UserSearchView, BulkMessageView
 )
 
@@ -11,28 +11,28 @@ app_name = 'messenger_api_v0'
 
 
 urlpatterns = [
-    url(
+    re_path(
         r'^bulk_message/$',
         BulkMessageView.as_view({
             'post': 'bulk_message'
         }),
         name="bulk_message"
     ),
-    url(
+    re_path(
         r'^user/$',
         UserSearchView.as_view({
             'get': 'list'
         }),
         name="user_search"
     ),
-    url(
+    re_path(
         r'^inbox/$',
         InboxView.as_view({
             'get': 'list'
         }),
         name="user_inbox_list"
     ),
-    url(
+    re_path(
         r'^inbox/(?P<pk>\d+)/$',
         InboxView.as_view({
             'patch': 'partial_update',
@@ -40,14 +40,14 @@ urlpatterns = [
         }),
         name="user_inbox_detail"
     ),
-    url(
+    re_path(
         r'^conversation/$',
         ConversationView.as_view({
             'get': 'list',
         }),
         name="conversation_list"
     ),
-    url(
+    re_path(
         r'^message/$',
         MessageCreateView.as_view(),
         name="message_create"

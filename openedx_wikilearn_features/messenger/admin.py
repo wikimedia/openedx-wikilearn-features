@@ -2,9 +2,9 @@
 Admin registration for Messenger.
 """
 from django.contrib import admin
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
-from openedx.features.wikimedia_features.messenger.models import (
+from openedx_wikilearn_features.messenger.models import (
    Message, Inbox
 )
 

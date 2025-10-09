@@ -4,7 +4,7 @@ from celery_utils.logged_task import LoggedTask
 from django.conf import settings
 from django.contrib.auth.models import User
 
-from openedx.features.wikimedia_features.email.utils import send_unread_messages_email
+from openedx_wikilearn_features.email.utils import send_unread_messages_email
 
 log = getLogger(__name__)
 

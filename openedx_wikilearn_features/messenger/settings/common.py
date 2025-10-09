@@ -1,4 +1,3 @@
-
 """Common settings for Messenger"""
 
 

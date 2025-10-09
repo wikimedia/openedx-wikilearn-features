@@ -3,7 +3,7 @@ Views for Messenger
 """
 from re import M
 from django.contrib.auth.decorators import login_required
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from common.djangoapps.edxmako.shortcuts import render_to_response
 from openedx.core.djangoapps.user_api.accounts.image_helpers import get_profile_image_urls_for_user

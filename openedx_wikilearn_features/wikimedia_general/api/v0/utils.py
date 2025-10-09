@@ -33,7 +33,7 @@ def get_authenticated_header_tabs(user):
     Return header tabs for authenticated users
     """
     show_explore_courses = settings.FEATURES.get("COURSES_ARE_BROWSABLE")
-    show_messenger_app = False  # TODO: set to True after migrating messenger app
+    show_messenger_app =  True
     programs_config = ProgramsApiConfig.current()
 
     header_tabs = [

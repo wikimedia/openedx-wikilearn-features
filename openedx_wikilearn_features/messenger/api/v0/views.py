@@ -3,7 +3,7 @@ Views for Messenger v0 API(s)
 """
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from django.utils.translation import ugettext as _
+from django.utils.translation import gettext as _
 from rest_framework import generics
 from rest_framework import filters
 from rest_framework import permissions
@@ -13,8 +13,8 @@ from rest_framework.exceptions import NotFound, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from openedx.features.wikimedia_features.messenger.models import Inbox, Message
-from openedx.features.wikimedia_features.messenger.api.v0.serializers import (
+from openedx_wikilearn_features.messenger.models import Inbox, Message
+from openedx_wikilearn_features.messenger.api.v0.serializers import (
     InboxSerializer, MessageSerializer, UserSerializer, BulkMessageSerializer
 )
 
@@ -196,6 +196,7 @@ class BulkMessageView(viewsets.ViewSet):
         "message": "message sample text"
     }
     """
+    authentication_classes = (SessionAuthentication,)
     serializer_class = BulkMessageSerializer
     permission_classes = (permissions.IsAuthenticated,)
 

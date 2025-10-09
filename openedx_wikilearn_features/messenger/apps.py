@@ -2,12 +2,15 @@
 Messenger App Config
 """
 from django.apps import AppConfig
+from django.conf import settings
+import os
+
 from edx_django_utils.plugins import PluginURLs, PluginSettings
 from openedx.core.djangoapps.plugins.constants import ProjectType, SettingsType
 
 
 class MessengerConfig(AppConfig):
-    name = 'openedx.features.wikimedia_features.messenger'
+    name = 'openedx_wikilearn_features.messenger'
 
     plugin_app = {
         PluginURLs.CONFIG: {
