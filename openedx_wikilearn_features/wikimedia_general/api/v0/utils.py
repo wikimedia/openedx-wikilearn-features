@@ -2,6 +2,8 @@
 Wikimedia Helper functions
 """
 
+from urllib.parse import urljoin
+
 from common.djangoapps.edxmako.shortcuts import marketing_link
 from django.conf import settings
 from django.urls import reverse
@@ -21,7 +23,7 @@ def get_unauthenticated_header_tabs():
             {
                 "id": "catalog",
                 "name": _("Catalog"),
-                "url": marketing_link("COURSES"),
+                "url": urljoin(settings.LMS_ROOT_URL, marketing_link("COURSES")),
             }
         )
 
@@ -33,14 +35,14 @@ def get_authenticated_header_tabs(user):
     Return header tabs for authenticated users
     """
     show_explore_courses = settings.FEATURES.get("COURSES_ARE_BROWSABLE")
-    show_messenger_app =  True
+    show_messenger_app = True
     programs_config = ProgramsApiConfig.current()
 
     header_tabs = [
         {
             "id": "courses",
             "name": _("Courses"),
-            "url": reverse("dashboard"),
+            "url": urljoin(settings.LMS_ROOT_URL, reverse("dashboard")),
         },
     ]
 
@@ -49,7 +51,7 @@ def get_authenticated_header_tabs(user):
             {
                 "id": "programs",
                 "name": _("Programs"),
-                "url": reverse("program_listing_view"),
+                "url": urljoin(settings.LMS_ROOT_URL, reverse("program_listing_view")),
             }
         )
 
@@ -58,7 +60,7 @@ def get_authenticated_header_tabs(user):
             {
                 "id": "catalog",
                 "name": _("Catalog"),
-                "url": marketing_link("COURSES"),
+                "url": urljoin(settings.LMS_ROOT_URL, marketing_link("COURSES")),
             }
         )
 
@@ -67,7 +69,7 @@ def get_authenticated_header_tabs(user):
             {
                 "id": "reports",
                 "name": _("Reports"),
-                "url": reverse("admin_dashboard:course_reports"),
+                "url": urljoin(settings.LMS_ROOT_URL, reverse("admin_dashboard:course_reports")),
             }
         )
 
@@ -76,7 +78,7 @@ def get_authenticated_header_tabs(user):
             {
                 "id": "inbox",
                 "name": _("Inbox"),
-                "url": reverse("messenger:messenger_home"),
+                "url": settings.MESSENGER_MICROFRONTEND_URL,
             }
         )
 
@@ -85,7 +87,7 @@ def get_authenticated_header_tabs(user):
     #         {
     #             "id": "sysadmin",
     #             "name": _('Sysadmin'),
-    #             "url": reverse('sysadmin:sysadmin'),
+    #             "url": urljoin(settings.LMS_ROOT_URL, reverse('sysadmin:sysadmin')),
     #         }
     #     )
     return header_tabs
