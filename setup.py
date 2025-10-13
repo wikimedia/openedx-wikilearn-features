@@ -162,6 +162,7 @@ setup(
         "lms.djangoapp": [
             "wikimedia_general = openedx_wikilearn_features.wikimedia_general.apps:WikimediaGeneralConfig",
             "admin_dashboard = openedx_wikilearn_features.admin_dashboard.apps:AdminDashboardConfig",
+            "messenger = openedx_wikilearn_features.messenger.apps:MessengerConfig",
         ],
         "cms.djangoapp": [
             "wikimedia_general = openedx_wikilearn_features.wikimedia_general.apps:WikimediaGeneralConfig",
