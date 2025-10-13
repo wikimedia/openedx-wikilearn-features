@@ -78,6 +78,7 @@ def is_discussion_notification_configured_for_site(site, post_id):
         return False
     return True
 
+#TODO: Re-enable this function after fixing the import issue with WEEKLY_NOTIFICATION_PREF_KEY
 
 # def get_course_users_with_preference(post_id):
 #     """
