@@ -1,11 +1,11 @@
 from logging import getLogger
 
 import markdown
-from celery import task
+from celery import shared_task
 from celery_utils.logged_task import LoggedTask
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
-from lms.djangoapps.discussion.tasks import _get_thread_url_weekly_digest
+from openedx_wikilearn_features.wikimedia_general.utils import _get_thread_url_weekly_digest
 from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.ace_common.template_context import (
     get_base_template_context,
@@ -28,7 +28,7 @@ from openedx_wikilearn_features.wikimedia_general.utils import (
 log = getLogger(__name__)
 
 
-@task(base=LoggedTask)
+@shared_task(base=LoggedTask)
 def send_thread_mention_email_task(post_body, context, is_thread):
     log.info("Initiated task to send thread mention notifications.")
 
@@ -48,7 +48,7 @@ def send_thread_mention_email_task(post_body, context, is_thread):
         log.info("No user is tagged on thread/comment of discussion forum.")
 
 
-@task(base=LoggedTask)
+@shared_task(base=LoggedTask)
 def send_thread_creation_email_task(contexts, is_thread, post_id):
     """
     Task to send email notifications for thread mentions in a discussion forum.
@@ -76,7 +76,7 @@ def send_thread_creation_email_task(contexts, is_thread, post_id):
         log.info("No user is tagged on thread/comment of discussion forum.")
 
 
-@task(base=LoggedTask)
+@shared_task(base=LoggedTask)
 def send_weekly_digest_new_post_notification_to_instructors(threads):
     """
     Asynchronously sends email notifications to course instructors about new discussion posts created.

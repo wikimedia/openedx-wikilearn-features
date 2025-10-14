@@ -23,7 +23,7 @@ from openedx.core.djangoapps.django_comment_common.signals import (
     thread_edited,
 )
 from openedx.core.djangoapps.theming.helpers import get_current_site
-from openedx.features.wikimedia_features.wikimedia_general.utils import (
+from openedx_wikilearn_features.wikimedia_general.utils import (
     is_discussion_notification_configured_for_site,
 )
 
