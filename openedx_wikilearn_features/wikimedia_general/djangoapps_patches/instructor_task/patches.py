@@ -1,5 +1,7 @@
+import logging
 from lms.djangoapps.instructor_task.subtasks import SubtaskStatus
 
+log = logging.getLogger(__name__)
 
 class EnhancedSubtaskStatus(SubtaskStatus):
     """
@@ -39,49 +41,12 @@ class EnhancedSubtaskStatus(SubtaskStatus):
         self.failure_details = failure_details or []
         self.skip_details = skip_details or []
 
-    def to_dict(self):
-        """
-        Output a dict representation of an EnhancedSubtaskStatus object.
-
-        Overrides base class to include failure and skip details.
-        """
-        d = super().to_dict().copy()
-        d['failure_details'] = self.failure_details
-        d['skip_details'] = self.skip_details
-        return d
-
-    def increment(
-        self,
-        succeeded=0,
-        failed=0,
-        skipped=0,
-        retried_nomax=0,
-        retried_withmax=0,
-        state=None,
-        failure_details=None,
-        skip_details=None
-    ):
-        """
-        Update the result of a subtask with additional results.
-        Extends the base method to also handle details lists.
-        """
-        super().increment(
-            succeeded=succeeded,
-            failed=failed,
-            skipped=skipped,
-            retried_nomax=retried_nomax,
-            retried_withmax=retried_withmax,
-            state=state
-        )
-        if failure_details:
-            self.failure_details.extend(failure_details)
-        if skip_details:
-            self.skip_details.extend(skip_details)
-
     def add_failure_detail(self, email, reason):
         """Add a single failure detail (email, reason)."""
+        log.info("Adding failure detail: %s - %s", email, reason)
         self.failure_details.append((email, reason))
 
     def add_skip_detail(self, email, reason):
         """Add a single skip detail (email, reason)."""
+        log.info("Adding skip detail: %s - %s", email, reason)
         self.skip_details.append((email, reason))

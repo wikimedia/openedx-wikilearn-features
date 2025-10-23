@@ -99,7 +99,7 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
         'failed' count above.
     """
 
-    print("\n\n\n\n\n\nUSING PATCHED FUNCTION\n\n\n\n\n")
+    log.info("BulkEmail ==> Starting _send_course_email using patched function")
     # Get information from current task's request:
     parent_task_id = InstructorTask.objects.get(pk=entry_id).task_id
     task_id = subtask_status.task_id
@@ -138,8 +138,8 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
     # that existed at that time, and we don't need to keep checking for changes
     # in the Optout list.
     if subtask_status.get_retry_count() == 0:
-        to_list, num_optout = _filter_optouts_from_recipients(to_list, course_email.course_id)
-        filtered_to_list, num_disabled = _filter_disabled_users_from_recipients(to_list, str(course_email.course_id))
+        filtered_to_list, num_optout = _filter_optouts_from_recipients(to_list, course_email.course_id)
+        filtered_to_list, num_disabled = _filter_disabled_users_from_recipients(filtered_to_list, str(course_email.course_id))
         subtask_status.increment(skipped=num_optout + num_disabled)
 
         # Retrieve the list of opt-outs by comparing the original to_list and the filtered_to_list
