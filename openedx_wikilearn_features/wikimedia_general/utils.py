@@ -7,6 +7,7 @@ from functools import reduce
 import pytz
 import six
 from six.moves.urllib.parse import urljoin
+from importlib import import_module
 from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.student.roles import CourseInstructorRole, CourseStaffRole
 from common.djangoapps.student.views import (
@@ -32,6 +33,8 @@ from openedx.features.course_experience.utils import get_course_outline_block_tr
 from xmodule.modulestore.django import modulestore
 
 from openedx_wikilearn_features.wikimedia_general import WEEKLY_NOTIFICATION_PREF_KEY
+from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.bulk_email.patches import _send_course_email
+from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.instructor_task.patches import EnhancedSubtaskStatus
 
 log = logging.getLogger(__name__)
 User = get_user_model()
@@ -436,3 +439,31 @@ def _get_thread_url_weekly_digest(thread_context,common_context):
         'id': thread_context['thread_id'],
     }
     return urljoin(base_url, permalink(thread_content))
+
+
+def patch_function(modules, func_name, replacement):
+    """Patch a loaded module with a proxy object that has all the override registry properties.
+    Arguments:
+        modules: modules where the to override are implemented.
+        func_name: class or model to replace.
+        replacement: class or model that works as the replacement.
+    """
+    if isinstance(modules, str):
+        modules = [modules]
+
+    for module_path in modules:
+        module = import_module(module_path)
+        setattr(module, func_name, replacement)
+
+
+def load_core_patches():
+    """Load core patches for Wikimedia features."""
+
+    log.info("Loading Wikimedia core patches...")
+
+    # Patches for showing failure details in bulk emails
+    modules = ["lms.djangoapps.bulk_email.tasks"]
+    patch_function(modules, "_send_course_email", _send_course_email)
+
+    modules = ["lms.djangoapps.instructor_task.subtasks"]
+    patch_function(modules, "SubtaskStatus", EnhancedSubtaskStatus)
