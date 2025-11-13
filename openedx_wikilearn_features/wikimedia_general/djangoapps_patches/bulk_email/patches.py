@@ -101,7 +101,8 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
 
     log.info("BulkEmail ==> Starting _send_course_email using patched function")
     # Get information from current task's request:
-    parent_task_id = InstructorTask.objects.get(pk=entry_id).task_id
+    parent_task = InstructorTask.objects.select_related('requester').get(pk=entry_id)
+    parent_task_id = parent_task.task_id
     task_id = subtask_status.task_id
     total_recipients = len(to_list)
     recipient_num = 0
@@ -210,10 +211,15 @@ def _send_course_email(entry_id, email_id, to_list, global_email_context, subtas
                 f"{email_context['platform_name']} course {email_context['course_title']}"
             )
 
+            reply_to = parent_task.requester.email
             if is_bulk_email_edx_ace_enabled():
                 message = ACEEmail(site, email_context)
+                if hasattr(message.message, 'options'):
+                    message.message.options['reply_to'] = [reply_to]
             else:
                 message = DjangoEmail(connection, course_email, email_context)
+                if hasattr(message.message, 'reply_to'):
+                    message.message.reply_to = [reply_to]
             # Throttle if we have gotten the rate limiter.  This is not very high-tech,
             # but if a task has been retried for rate-limiting reasons, then we sleep
             # for a period of time between all emails within this task.  Choice of
