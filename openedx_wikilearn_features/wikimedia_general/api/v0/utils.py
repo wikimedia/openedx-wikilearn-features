@@ -74,13 +74,13 @@ def get_authenticated_header_tabs(user):
         )
 
     if show_messenger_app:
-        header_tabs.append(
-            {
+        messenger_url = getattr(settings, "MESSENGER_MICROFRONTEND_URL", None)
+        if messenger_url:
+            header_tabs.append({
                 "id": "inbox",
                 "name": _("Inbox"),
-                "url": settings.MESSENGER_MICROFRONTEND_URL,
-            }
-        )
+                "url": messenger_url,
+            })
 
     # if user.is_superuser:
     #     header_tabs.append(

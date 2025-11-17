@@ -85,7 +85,7 @@ def is_discussion_notification_configured_for_site(site, post_id):
         return False
     return True
 
-
+#TODO: remove code related to discussions weekly diegest once email notifications have been enabled
 def get_course_users_with_preference(post_id):
     """
     Fetches users associated with a course who have a specific subscribed to weekly digest.
@@ -193,18 +193,20 @@ def get_user_completed_course_keys(user):
     return ["{}".format(course_key) for course_key in course_enrollments_keys if is_course_completed(user, course_key)]
 
 
-def get_follow_up_courses(course_keys):
+def get_follow_up_courses(user):
     """
     Returns courses which have courses in course_keys as their prerequisite
     """
     follow_up_courses = []
+    if user.is_authenticated:
+        course_keys = get_user_completed_course_keys(user)
 
-    if course_keys:
-        course_keys_in_prerequisites = (
-            Q(_pre_requisite_courses_json__contains=course_key) for course_key in course_keys
-        )
-        query = reduce(operator.or_, course_keys_in_prerequisites)
-        follow_up_courses = list(CourseOverview.objects.filter(query))
+        if course_keys:
+            course_keys_in_prerequisites = (
+                Q(_pre_requisite_courses_json__contains=course_key) for course_key in course_keys
+            )
+            query = reduce(operator.or_, course_keys_in_prerequisites)
+            follow_up_courses = list(CourseOverview.objects.filter(query))
 
     return follow_up_courses
 
