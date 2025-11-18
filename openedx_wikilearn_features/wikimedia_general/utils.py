@@ -1,6 +1,7 @@
 import copy
 import logging
 import operator
+import html
 from datetime import datetime, timedelta
 from functools import reduce
 
@@ -125,6 +126,7 @@ def get_course_users_with_preference(post_id):
 
 
 def get_mentioned_users_list(input_string, users_list=None):
+    input_string = html.unescape(input_string)
     if not users_list:
         users_list = []
 
