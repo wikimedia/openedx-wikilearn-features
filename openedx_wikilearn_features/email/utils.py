@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils.timezone import localtime
 from edx_ace import ace
 from edx_ace.recipient import Recipient
+from openedx.core.djangoapps.theming.helpers import get_current_site
 from lms.djangoapps.discussion.tasks import _get_thread_url
 from openedx.core.djangoapps.ace_common.template_context import (
     get_base_template_context,
@@ -128,8 +129,10 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
         a boolean variable indicating email response.
         if email is successfully send to all dest emails -> return True otherwise return false.
     """
-    if not current_site:
-        current_site = Site.objects.all().first()
+    current_site = get_current_site()
+
+    if current_site is None:
+        current_site = Site.objects.get_current()
 
     if not request_user:
         try:
@@ -159,7 +162,7 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
             "logo_url": current_site.configuration.get_value("DEFAULT_EMAIL_LOGO_URL", settings.DEFAULT_EMAIL_LOGO_URL),
             "messenger_url": "{base_url}{messenger_path}".format(
                 base_url=base_root_url,
-                messenger_path=reverse("messenger:messenger_home"),
+                messenger_path=getattr(settings, "MESSENGER_MICROFRONTEND_URL", None),
             ),
         }
     )
