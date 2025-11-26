@@ -15,6 +15,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from opaque_keys.edx.keys import CourseKey
+from xmodule.modulestore.django import modulestore
+from xmodule.modulestore import ModuleStoreEnum
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.django_comment_common.signals import (
     comment_created,
@@ -66,6 +68,20 @@ def upload_course_default_image(sender, instance, created, **kwargs):
             logger.error("Asset size too large for course %s: %s", course_key, str(e))
         except Exception as e:
             logger.error("Error processing file for course %s: %s", course_key, str(e))
+
+
+@receiver(post_save, sender=CourseOverview)
+def set_default_license(sender, instance, created, **kwargs):
+    if created:
+        course_key = instance.id
+        module_store = modulestore()
+        descriptor = module_store.get_course(course_key)
+
+        # Set default license
+        descriptor.license = "creative-commons: ver=4.0 BY SA"
+        module_store.update_item(descriptor, ModuleStoreEnum.UserID.system)
+
+        logger.info("Default license set via update_from_json for course %s", course_key)
 
 
 @receiver(post_save, sender=CourseOverview)
