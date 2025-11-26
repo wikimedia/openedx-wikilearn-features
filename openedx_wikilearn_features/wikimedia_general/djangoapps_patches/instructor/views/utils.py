@@ -1,4 +1,3 @@
-from django.views.decorators.http import require_POST
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from opaque_keys.edx.keys import CourseKey
@@ -9,7 +8,6 @@ from lms.djangoapps.instructor import permissions
 from lms.djangoapps.instructor_task.models import ReportStore
 
 
-@require_POST
 @ensure_csrf_cookie
 def list_report_downloads_student_admin(request, course_id):
     """
