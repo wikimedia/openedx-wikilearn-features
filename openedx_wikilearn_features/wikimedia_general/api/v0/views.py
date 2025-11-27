@@ -4,9 +4,12 @@ Views for wikimedia_general v0 API(s)
 
 from django.contrib.auth.decorators import login_required
 from openedx.core.djangoapps.lang_pref.api import header_language_selector_is_enabled, released_languages
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from opaque_keys.edx.keys import CourseKey
+
+from lms.djangoapps.courseware.courses import get_course_by_id
 
 from openedx_wikilearn_features.wikimedia_general.api.v0.utils import (
     get_authenticated_header_tabs,
@@ -68,3 +71,28 @@ def get_language_selector_is_enabled(request):
         "language_selector_is_enabled": language_selector_is_enabled,
     }
     return Response(response, status=status.HTTP_200_OK)
+
+
+class RetrieveWikiMetaData(generics.RetrieveAPIView):
+    """
+    API to get course font
+    Response:
+        {
+            "key": String,
+            "course_font": String,
+
+        }
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        course_key_string = kwargs.get('course_key_string')
+        course_key = CourseKey.from_string(course_key_string)
+        course = get_course_by_id(course_key)
+
+        data = {
+            'key': course_key_string,
+            'course_font': course.course_font_family,
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
