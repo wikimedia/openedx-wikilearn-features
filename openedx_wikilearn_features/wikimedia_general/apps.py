@@ -34,7 +34,13 @@ class WikimediaGeneralConfig(AppConfig):
     }
 
     def ready(self):
-        import openedx_wikilearn_features.wikimedia_general.signals  # pylint: disable=unused-import
-        from openedx_wikilearn_features.wikimedia_general.utils import load_core_patches  # pylint: disable=import-outside-toplevel
+        import openedx_wikilearn_features.wikimedia_general.signals  # pylint: disable=unused-import  # noqa: F401
+        from openedx_wikilearn_features.wikimedia_general.add_search_index import (
+            load_search_index_patches,  # pylint: disable=import-outside-toplevel
+        )
+        from openedx_wikilearn_features.wikimedia_general.utils import (
+            load_core_patches,  # pylint: disable=import-outside-toplevel
+        )
 
         load_core_patches()
+        load_search_index_patches()

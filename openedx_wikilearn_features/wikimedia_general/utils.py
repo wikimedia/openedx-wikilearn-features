@@ -297,7 +297,7 @@ def get_user_course_completions(user, user_enrollments):
     return total_completions
 
 
-def get_paced_type(self_paced):
+def get_pace_type(self_paced):
     """Paced Type Filter
     Args:
         self_paced (Bool): Self paced or Instructor Led
@@ -427,7 +427,7 @@ def add_courseware_info(data, user, current_site, course_key):
 
 
 WIKI_LMS_FILTER_MAPPINGS = {
-    "paced_type": get_paced_type,
+    "pace_type": get_pace_type,
     "enrollment_type": get_enrollment_type,
     "prerequisites_type": get_prerequisites_type,
 }
