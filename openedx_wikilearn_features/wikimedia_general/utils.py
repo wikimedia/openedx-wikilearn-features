@@ -1,14 +1,13 @@
 import copy
+import html
 import logging
 import operator
-import html
 from datetime import datetime, timedelta
 from functools import reduce
+from importlib import import_module
 
 import pytz
 import six
-from six.moves.urllib.parse import urljoin
-from importlib import import_module
 from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.student.roles import CourseInstructorRole, CourseStaffRole
 from common.djangoapps.student.views import (
@@ -23,19 +22,24 @@ from django.test import RequestFactory
 from lms.djangoapps.certificates.models import CertificateStatuses, GeneratedCertificate
 from lms.djangoapps.courseware.courses import get_course_with_access
 from lms.djangoapps.discussion.django_comment_client.utils import add_courseware_context, permalink
-
-from openedx.core.djangoapps.user_api.models import UserPreference
 from lms.djangoapps.grades.api import CourseGradeFactory
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration.models import SiteConfiguration
+from openedx.core.djangoapps.user_api.models import UserPreference
 from openedx.features.course_experience.utils import get_course_outline_block_tree
+from six.moves.urllib.parse import urljoin
 from xmodule.modulestore.django import modulestore
 
 from openedx_wikilearn_features.wikimedia_general import WEEKLY_NOTIFICATION_PREF_KEY
 from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.bulk_email.patches import _send_course_email
-from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.instructor_task.patches import EnhancedSubtaskStatus
+from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.contentstore.courseware_index import (
+    load_search_index_patches,
+)
+from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.instructor_task.patches import (
+    EnhancedSubtaskStatus,
+)
 
 log = logging.getLogger(__name__)
 User = get_user_model()
@@ -297,7 +301,7 @@ def get_user_course_completions(user, user_enrollments):
     return total_completions
 
 
-def get_paced_type(self_paced):
+def get_pace_type(self_paced):
     """Paced Type Filter
     Args:
         self_paced (Bool): Self paced or Instructor Led
@@ -427,7 +431,7 @@ def add_courseware_info(data, user, current_site, course_key):
 
 
 WIKI_LMS_FILTER_MAPPINGS = {
-    "paced_type": get_paced_type,
+    "pace_type": get_pace_type,
     "enrollment_type": get_enrollment_type,
     "prerequisites_type": get_prerequisites_type,
 }
@@ -471,3 +475,5 @@ def load_core_patches():
 
     modules = ["lms.djangoapps.instructor_task.subtasks"]
     patch_function(modules, "SubtaskStatus", EnhancedSubtaskStatus)
+
+    load_search_index_patches()
