@@ -1,6 +1,7 @@
+from django.contrib import admin
 from openedx.core.djangoapps.user_api.models import UserPreference
 
-from django.contrib import admin
+from openedx_wikilearn_features.wikimedia_general.models import Topic
 
 
 @admin.register(UserPreference)
@@ -13,3 +14,10 @@ class UserPreferenceAdmin(admin.ModelAdmin):
     exclude = ("id",)
     list_per_page = 100
     list_max_show_all = 100
+
+
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
+    list_display = ("name",)
+    search_fields = ("name",)
+    list_per_page = 100
