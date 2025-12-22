@@ -7,9 +7,10 @@ from django.urls import re_path
 
 from openedx_wikilearn_features.wikimedia_general.api.v0.views import (
     RetrieveLMSTabs,
+    RetrieveWikiMetaData,
+    create_topic,
     get_language_selector_is_enabled,
     get_released_languages,
-    RetrieveWikiMetaData,
 )
 
 app_name = "general_api_v0"
@@ -23,8 +24,9 @@ urlpatterns = [
         name="language_selector_is_enabled",
     ),
     re_path(
-        fr'^wiki_metadata/{settings.COURSE_KEY_PATTERN}',
+        rf"^wiki_metadata/{settings.COURSE_KEY_PATTERN}",
         RetrieveWikiMetaData.as_view(),
-        name='course_font',
+        name="course_font",
     ),
+    re_path(r"topics", create_topic, name="create_topic"),
 ]

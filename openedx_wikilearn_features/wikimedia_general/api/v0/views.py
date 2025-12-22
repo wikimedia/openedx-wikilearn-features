@@ -3,18 +3,19 @@ Views for wikimedia_general v0 API(s)
 """
 
 from django.contrib.auth.decorators import login_required
+from lms.djangoapps.courseware.courses import get_course_by_id
+from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.lang_pref.api import header_language_selector_is_enabled, released_languages
-from rest_framework import generics, status, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from opaque_keys.edx.keys import CourseKey
-
-from lms.djangoapps.courseware.courses import get_course_by_id
 
 from openedx_wikilearn_features.wikimedia_general.api.v0.utils import (
     get_authenticated_header_tabs,
     get_unauthenticated_header_tabs,
 )
+
+from .serializers import TopicSerializer
 
 
 class RetrieveLMSTabs(generics.RetrieveAPIView):
@@ -96,3 +97,32 @@ class RetrieveWikiMetaData(generics.RetrieveAPIView):
         }
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@login_required
+def create_topic(request):
+    """
+    Create a new Topic.
+    
+    POST /api/v0/topics/
+    Body: {"name": "Topic Name"}
+    
+    Returns:
+        201: Topic created successfully
+        400: Invalid data or topic already exists
+    """
+    serializer = TopicSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED
+        )
+    
+    return Response(
+        serializer.errors,
+        status=status.HTTP_400_BAD_REQUEST
+    )
+

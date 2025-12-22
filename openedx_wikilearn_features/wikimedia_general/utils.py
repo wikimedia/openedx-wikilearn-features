@@ -8,12 +8,12 @@ from importlib import import_module
 
 import pytz
 import six
-from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.student.roles import CourseInstructorRole, CourseStaffRole
 from common.djangoapps.student.views import (
     get_course_enrollments,
     get_org_black_and_whitelist_for_site,
 )
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -25,7 +25,6 @@ from lms.djangoapps.discussion.django_comment_client.utils import add_courseware
 from lms.djangoapps.grades.api import CourseGradeFactory
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
-from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.site_configuration.models import SiteConfiguration
 from openedx.core.djangoapps.user_api.models import UserPreference
 from openedx.features.course_experience.utils import get_course_outline_block_tree
@@ -40,6 +39,7 @@ from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.contentstor
 from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.instructor_task.patches import (
     EnhancedSubtaskStatus,
 )
+from openedx_wikilearn_features.wikimedia_general.models import Topic
 
 log = logging.getLogger(__name__)
 User = get_user_model()
@@ -106,6 +106,9 @@ def get_course_users_with_preference(post_id):
         list: A list of User objects who have the specified preference set. These users include students, instructors,
         and staff.
     """
+    # Lazy import to avoid circular import
+    CourseEnrollment = apps.get_model('student', 'CourseEnrollment')
+    
     course_key = CourseKey.from_string(post_id)
     log.info(f"Fetching users with forum roles for course_key: {course_key}")
 
@@ -203,6 +206,9 @@ def get_follow_up_courses(user):
     """
     Returns courses which have courses in course_keys as their prerequisite
     """
+    # Lazy import to avoid circular import
+    CourseOverview = apps.get_model('course_overviews', 'CourseOverview')
+
     follow_up_courses = []
     if user.is_authenticated:
         course_keys = get_user_completed_course_keys(user)
@@ -265,10 +271,10 @@ def get_users_course_completion_stats(users, users_enrollments, course_keys):
 
 def get_course_enrollment_and_completion_stats(course_id) -> dict:
     """Returns the count of student completed the provided course"""
-    enrollments = CourseEnrollment.objects.filter(
-        course_id=course_id,
-        is_active=True,
-    )
+    # Lazy import to avoid circular import
+    CourseEnrollment = apps.get_model('student', 'CourseEnrollment')
+
+    enrollments = CourseEnrollment.objects.filter(course_id=course_id, is_active=True)
 
     total_learners_completed = 0
     total_cert_generated = 0
@@ -447,6 +453,38 @@ def _get_thread_url_weekly_digest(thread_context,common_context):
         'id': thread_context['thread_id'],
     }
     return urljoin(base_url, permalink(thread_content))
+
+
+def update_other_course_settings(other_settings, course, user):
+    """
+    Updates the 'other course settings' for a specified course.
+
+    This function merges the provided `other_settings` into the existing
+    `other_course_settings` of the course object. It then updates the course
+    settings and logs the action.
+
+    Args:
+        other_settings (dict): A dictionary containing the new settings to
+            be added or updated in the course's other settings.
+        course (Course): The course object to be updated.
+        user (User): The user performing the update, typically used for
+            permission checks and auditing.
+    """
+    # Lazy import to avoid circular import
+    from cms.djangoapps.contentstore.views.course import update_course_advanced_settings # noqa: F401
+
+    updated_other_course_settings = {**course.other_course_settings, **other_settings}
+    update_data = {"other_course_settings": {"value": updated_other_course_settings}}
+    update_course_advanced_settings(course, update_data, user)
+    log.info(f"Updated course with key: {course.id} with updated other settings: {updated_other_course_settings}")
+
+
+def get_topics():
+    """
+    Returns the list of current topics available
+    """
+    topics = Topic.objects.values_list('name', flat=True)
+    return topics
 
 
 def patch_function(modules, func_name, replacement):
