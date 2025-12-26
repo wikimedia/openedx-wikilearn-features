@@ -11,7 +11,7 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 from openedx.core.djangoapps.models.course_details import CourseDetails
 from xmodule.modulestore.django import modulestore
 
-from openedx_wikilearn_features.meta_translations.mapping.utils import get_recursive_blocks_data
+from openedx_wikilearn_features.meta_translations.mapping.utils import course_blocks_mapping, get_recursive_blocks_data
 from openedx_wikilearn_features.meta_translations.models import (
     CourseBlock,
     CourseTranslation,
@@ -311,3 +311,41 @@ def add_translation_metadata(xblock_info, xblock):
         elif is_translated_or_base_course == CourseTranslation._TRANSLATED_COURSE:
             mapping_message = 'Translated-Course'
         xblock_info['mapping_message'] = mapping_message
+
+def rerun_course_translated(source_course_key, destination_course_key, user_id, is_translated_rerun, language):
+    """
+    Handle course translation setup if this is a translated rerun.
+    """
+
+    if is_translated_rerun:
+        CourseTranslation.set_course_translation(destination_course_key, source_course_key)
+        course_blocks_mapping(destination_course_key)
+        
+        if language:
+            course_module = modulestore().get_course(destination_course_key)
+            if course_module:
+                course_module.language = language
+                modulestore().update_item(course_module, user_id)
+
+def get_translation_context(xblock):
+    """
+    Get translation-related context for the xblock template.
+    
+    Args:
+        xblock: The xblock instance
+        
+    Returns:
+        dict: Dictionary containing translation context fields
+    """
+    context = {}
+    is_destination_course_block = is_destination_course(xblock.course_id)
+    
+    # Add meta translation fields as a reper fields in destination course containers
+    # to show translation switch and a status of the block on header
+    context['is_destination_course'] = is_destination_course_block
+    
+    if is_destination_course_block:
+        context['meta_block_status'] = get_block_status(xblock.location)
+        context['destination_flag'] = is_destination_block(xblock.location)
+    
+    return context
