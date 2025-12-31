@@ -25,9 +25,8 @@ log = getLogger(__name__)
 @require_http_methods(["POST"])
 def course_blocks_mapping_view(request):
     if request.body:
-        course_outline_data = json.loads(request.body)
-        course_key_string = course_outline_data["studio_url"].split('/')[2]
-        course_key = CourseKey.from_string(course_key_string)
+        data = json.loads(request.body)
+        course_key = CourseKey.from_string(data["course_id"])
 
         try:
             if course_blocks_mapping(course_key):
