@@ -69,6 +69,14 @@ def upload_course_default_image(sender, instance, created, **kwargs):
         except Exception as e:
             logger.error("Error processing file for course %s: %s", course_key, str(e))
 
+@receiver(post_save, sender=CourseOverview)
+def add_default_sortable_advanced_course_module(sender, instance, created, **kwargs):
+    if created:
+        course_key = instance.id
+        course_block = modulestore().get_course(course_key)
+        setattr(course_block, "advanced_modules", ["sortable", "done", "staffgradedxblock"])
+        modulestore().update_item(course_block, ModuleStoreEnum.UserID.system)
+        logger.info("Added default sortable advanced module for course %s", instance.id)
 
 @receiver(post_save, sender=CourseOverview)
 def set_default_license(sender, instance, created, **kwargs):
