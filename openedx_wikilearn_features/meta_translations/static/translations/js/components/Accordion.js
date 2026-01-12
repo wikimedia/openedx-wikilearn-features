@@ -5,12 +5,11 @@ import Actions from "./Actions";
 
 function Accordion (props) {
 
-  const { baseTitle, rerunTitle, children, units, baseContent, addClass, rerunCourseId, destinationFlag, isFullyTranslated,  versionStatus, expendOutline, pageUrl, pageGroupUrl} = props
+  const { baseTitle, rerunTitle, children, units, baseContent, addClass, rerunCourseId, destinationFlag, isFullyTranslated,  versionStatus, expendOutline, pageUrl, pageGroupUrl, context} = props
 
   const [isCollapsed, setCollapsed] = useState(true);
   const [approveAll, setApproveAll] = useState(false);
   const ref = useRef();
-  const slide = $(ref.current);
 
   const { fetchCourseUnit } = useFetch(context);
 
@@ -19,12 +18,10 @@ function Accordion (props) {
       fetchCourseUnit({...props, showSlide, setApproveAll});
     } else {
       setCollapsed(!isCollapsed);
-      !isCollapsed ? slide.slideUp() : slide.slideDown()
     }
   }
 
   const showSlide = () => {
-    slide.slideDown();
     setCollapsed(false);
   }
 
@@ -33,11 +30,9 @@ function Accordion (props) {
       const isExpended = !!(expendOutline % 2)
       if ((isExpended && isCollapsed) || (!isExpended && !isCollapsed)){
         setCollapsed(!isExpended)
-        !isCollapsed ? slide.slideUp() : slide.slideDown()
       }
     } else {
       setCollapsed(true)
-      slide.slideUp()
     }
   },[expendOutline])
 

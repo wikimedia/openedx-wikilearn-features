@@ -22,7 +22,8 @@
 <%block name="content">
     <div id="root" class="container">
     </div>
-    <%static:webpack entry="Translations">
+    <script type="text/javascript" src="${static.url('bundles/Translations.js')}"></script>
+    <script type="text/javascript">
         var context = {
             "PLATFORM_NAME": "${platform_name | n, js_escaped_string}",
             "LOGIN_USER": "${login_user_username | n, js_escaped_string}",
@@ -35,8 +36,26 @@
             "LANGUAGES": ${language_options | n, dump_js_escaped_json},
             "META_DATA": ${meta_data | n, dump_js_escaped_json},
             "IS_ADMIN": "${is_admin}"
-        }
+        };
 
-        new Translations(context);
-    </%static:webpack>
+        // Handle both webpack library export structure and direct window assignment
+        var TranslationsClass = null;
+        if (typeof window.Translations !== 'undefined') {
+            // If it's the class directly (from our window assignment)
+            if (typeof window.Translations === 'function') {
+                TranslationsClass = window.Translations;
+            }
+            // If it's the webpack exports object (from library output)
+            else if (window.Translations.Translations && typeof window.Translations.Translations === 'function') {
+                TranslationsClass = window.Translations.Translations;
+            }
+        }
+        
+        if (TranslationsClass) {
+            new TranslationsClass(context);
+        } else {
+            console.error('Translations bundle not loaded or Translations class not found');
+            console.log('window.Translations:', window.Translations);
+        }
+    </script>
 </%block>

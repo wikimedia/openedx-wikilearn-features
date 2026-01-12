@@ -1,5 +1,5 @@
 import React from "react";
-import ReactHtmlParser from 'react-html-parser';
+import parse from 'html-react-parser';
 
 import isEmpty from '../helpers/isEmptyObject';
 import Actions from "./Actions";
@@ -23,7 +23,7 @@ function Unit (props) {
         </ol>
       );
     } else {
-      return (ReactHtmlParser(data.content))
+      return (parse(data.content))
     }
   }
   return (
