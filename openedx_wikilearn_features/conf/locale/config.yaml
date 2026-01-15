@@ -1,0 +1,17 @@
+locales:
+  - en
+
+# The locales used for fake-accented English, for testing.
+dummy_locales:
+  - eo
+  - rtl  # Fake testing language for Arabic
+
+ignore_dirs:
+  - node_modules
+  - conf
+  - docs
+  - '*/test'
+  - '*/tests'
+generate_merge:
+  django.po:
+    - django-partial.po
