@@ -230,10 +230,10 @@ class WikiMetaClient(object):
         }
 
         success, data = await self.handle_request(session.post, params=None, data=post_data)
-        if success:
+        if success and data.get('login', {}).get('result', '') == 'Success':
             logger.info("Login request is successfull")
         else:
-            raise Exception("Meta Client Error: Failed login request.")
+            raise Exception(f"Meta Client Error: Failed login request with the following response: {data}")
 
 
     async def fetch_csrf_token(self, session):
