@@ -263,22 +263,21 @@ def validate_translated_rerun(is_translated_rerun, source_course_key, language):
         return None  # Not a translated rerun, skip validation
 
     if not language:
-        return JsonResponse({"error": _("Course Language is required field for Translated rerun.")}, status=400)
+        return JsonResponse({"ErrMsg": _("Course Language is required field for Translated rerun.")})
 
     if CourseTranslation.is_translated_rerun_exists_in_language(source_course_key, language):
         return JsonResponse(
-            {"error": _("Translated rerun for Source Course in selected language already exists.")}, status=400
+            {"ErrMsg": _("Translated rerun for Source Course in selected language already exists.")}
         )
 
     source_course_details = CourseDetails.fetch(CourseKey.from_string(source_course_key))
     if not source_course_details or not source_course_details.language:
         return JsonResponse(
             {
-                "error": _(
+                "ErrMsg": _(
                     "Translated rerun can not be created for the base course with no language. Please set base course language from settings."
                 )
             },
-            status=400,
         )
 
     return None  # Validation passed
