@@ -25,4 +25,4 @@ class MetaTranslationsConfig(AppConfig):
     }
 
     def ready(self):
-        pass  # pylint: disable=unused-import
+        from openedx_wikilearn_features.meta_translations import signals  # pylint: disable=unused-import
