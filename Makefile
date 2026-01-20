@@ -105,6 +105,10 @@ extract_translations: ## extract strings to be translated, outputting .mo files
 	rm -rf docs/_build
 	cd openedx_wikilearn_features && i18n_tool extract --no-segment
 
+pull_translations:
+	atlas pull $(ATLAS_OPTIONS) \
+		translations/openedx-wikilearn-features/conf/locale:conf/locale
+
 compile_translations: ## compile translation files, outputting .po files for each supported language
 	cd openedx_wikilearn_features && i18n_tool generate
 
