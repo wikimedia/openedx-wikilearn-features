@@ -63,3 +63,9 @@ docs/openedx_wikilearn_features.*.rst
 # Private requirements
 requirements/private.in
 requirements/private.txt
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

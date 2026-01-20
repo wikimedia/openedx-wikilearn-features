@@ -3,4 +3,7 @@ include LICENSE.txt
 include README.rst
 include requirements/base.in
 include requirements/constraints.txt
+include package.json
+include webpack.config.js
 recursive-include openedx_wikilearn_features *.html *.png *.gif *.js *.css *.jpg *.jpeg *.svg
+recursive-include openedx_wikilearn_features/meta_translations/static/bundles *.js

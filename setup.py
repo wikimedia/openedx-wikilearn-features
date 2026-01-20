@@ -166,6 +166,7 @@ setup(
         ],
         "cms.djangoapp": [
             "wikimedia_general = openedx_wikilearn_features.wikimedia_general.apps:WikimediaGeneralConfig",
+            "meta_translations = openedx_wikilearn_features.meta_translations.apps:MetaTranslationsConfig",
         ],
     },
 )
