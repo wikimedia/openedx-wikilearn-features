@@ -103,7 +103,7 @@ selfcheck: ## check that the Makefile is well-formed
 
 extract_translations: ## extract strings to be translated, outputting .mo files
 	rm -rf docs/_build
-	cd openedx_wikilearn_features && i18n_tool extract --no-segment
+	i18n_tool extract --no-segment
 
 pull_translations:
 	atlas pull $(ATLAS_OPTIONS) \
