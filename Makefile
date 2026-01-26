@@ -103,7 +103,16 @@ selfcheck: ## check that the Makefile is well-formed
 
 extract_translations: ## extract strings to be translated, outputting .mo files
 	rm -rf docs/_build
-	i18n_tool extract --no-segment
+	cd openedx_wikilearn_features && i18n_tool extract --no-segment
+        ## extract Mako templates (_("...")) and merge into django.po
+	cd openedx_wikilearn_features && find . -name "*.html" -o -name "*.py" | \
+	    xgettext --language=Python \
+		--keyword=_ \
+		--keyword=gettext \
+		--from-code=UTF-8 \
+		--join-existing \
+		--output=conf/locale/en/LC_MESSAGES/django.po \
+		--files-from=-
 
 pull_translations:
 	atlas pull $(ATLAS_OPTIONS) \
