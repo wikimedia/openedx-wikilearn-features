@@ -27,17 +27,21 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install pip-tools
+        run: |
+          pip install -r requirements/pip-tools.txt
+
       - name: Install Atlas CLI
         run: |
           pip install openedx-atlas
 
       - name: Install dependencies
         run: |
-          pip install -r requirements/base.txt
+          pip-sync requirements/dev.txt
 
       - name: Pull translations
         run: |
-          make OPENEDX_ATLAS_PULL=true ATLAS_OPTIONS="--repository=${{ inputs.repository }} --revision=${{ inputs.revision }}" pull_translations
+          make OPENEDX_ATLAS_PULL=true OPENEDX_ATLAS_ARGS="--repository=${{ inputs.repository }} --revision=${{ inputs.revision }}" pull_translations
         env:
           OPENEDX_ATLAS_PULL: true
 
