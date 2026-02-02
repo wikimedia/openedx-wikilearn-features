@@ -6,7 +6,7 @@ on:
       repository:
         description: 'Atlas repository'
         required: false
-        default: 'eemaanamir/openedx-translations'
+        default: 'wikimedia/openedx-translations'
         type: string
       revision:
         description: 'Atlas revision/branch'
