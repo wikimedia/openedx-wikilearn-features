@@ -9,6 +9,7 @@ from openedx_wikilearn_features.wikimedia_general.api.v0.views import (
     RetrieveLMSTabs,
     RetrieveWikiMetaData,
     create_topic,
+    get_issued_certificates,
     get_language_selector_is_enabled,
     get_released_languages,
 )
@@ -29,4 +30,9 @@ urlpatterns = [
         name="course_font",
     ),
     re_path(r"topics", create_topic, name="create_topic"),
+    re_path(
+        rf"^get_issued_certificates/{settings.COURSE_KEY_PATTERN}",
+        get_issued_certificates,
+        name="get_issued_certificates",
+    ),
 ]
