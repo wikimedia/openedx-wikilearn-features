@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { ToastContainer } from 'react-toastify';
 import Select from 'react-select';
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import useFetch from '../hooks/useFetch';
 import Spinner from '../assets/spinner';
 
 function DiscoverCoursesContent({ context }) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { LANGUAGES, META_DATA } = context
   const { fetchCourses } = useFetch(context)
   const [all_courses, setAllCourses] = useState([]);
@@ -17,7 +17,7 @@ function DiscoverCoursesContent({ context }) {
   const [loading, setLoading] = useState(true);
 
   const handleCourseSelect = (course_id) => {
-    history.push(`/meta_translations/discover_courses/${course_id}`);
+    navigate(`/meta_translations/discover_courses/${course_id}`);
   }
 
   useEffect(() => {

@@ -16,6 +16,18 @@ Unreleased
 
 *
 
+1.0.1 – 2026-07-07
+**********************************************
+
+Fixed
+=====
+
+* Fix ``WebpackBundleLookupError: Cannot resolve bundle DiscoverCourses`` on the
+  Discover Courses page by building the ``DiscoverCourses`` bundle from the
+  plugin's own webpack config and loading it directly in the template, matching
+  the Translations app. Ported the Discover Courses React app from the
+  react-router v5 API (``Switch``/``useHistory``) to v6 (``Routes``/``useNavigate``).
+
 0.1.0 – 2025-09-18
 **********************************************
 

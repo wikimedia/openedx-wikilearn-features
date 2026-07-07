@@ -8,6 +8,7 @@ module.exports = {
     context: __dirname,
     entry: {
         Translations: './openedx_wikilearn_features/meta_translations/static/translations/js/Translations.js',
+        DiscoverCourses: './openedx_wikilearn_features/meta_translations/static/discover_courses/js/DiscoverCourses.js',
     },
     output: {
         path: path.resolve(__dirname, 'openedx_wikilearn_features/meta_translations/static/bundles'),
