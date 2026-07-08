@@ -22,7 +22,8 @@
 <%block name="content">
     <div id="root" class="container">
     </div>
-    <%static:webpack entry="DiscoverCourses">
+    <script type="text/javascript" src="${static.url('bundles/DiscoverCourses.js')}"></script>
+    <script type="text/javascript">
         var context = {
             "PLATFORM_NAME": "${platform_name | n, js_escaped_string}",
             "LANGUAGES": ${language_options | n, dump_js_escaped_json},
@@ -34,6 +35,25 @@
               'meta_translations:translations_api_v0:meta_course_translations'
             ) | n, js_escaped_string}",
         }
-        new DiscoverCourses(context);
-    </%static:webpack>
+
+        // Handle both webpack library export structure and direct window assignment
+        var DiscoverCoursesClass = null;
+        if (typeof window.DiscoverCourses !== 'undefined') {
+            // If it's the class directly (from our window assignment)
+            if (typeof window.DiscoverCourses === 'function') {
+                DiscoverCoursesClass = window.DiscoverCourses;
+            }
+            // If it's the webpack exports object (from library output)
+            else if (window.DiscoverCourses.DiscoverCourses && typeof window.DiscoverCourses.DiscoverCourses === 'function') {
+                DiscoverCoursesClass = window.DiscoverCourses.DiscoverCourses;
+            }
+        }
+
+        if (DiscoverCoursesClass) {
+            new DiscoverCoursesClass(context);
+        } else {
+            console.error('DiscoverCourses bundle not loaded or DiscoverCourses class not found');
+            console.log('window.DiscoverCourses:', window.DiscoverCourses);
+        }
+    </script>
 </%block>
