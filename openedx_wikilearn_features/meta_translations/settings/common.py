@@ -37,13 +37,11 @@ def plugin_settings(settings):
       'stringresponse',
     ]
 
-    settings.WIKI_META_BASE_URL = "https://lpl-mleb-master.wmcloud.org/index.php"
-    settings.WIKI_META_BASE_API_URL = "https://lpl-mleb-master.wmcloud.org/api.php"
-    settings.WIKI_META_CONTENT_MODEL = "translate-messagebundle"
-    settings.WIKI_META_MCGROUP_PREFIX = "messagebundle"
-    settings.WIKI_META_COURSE_PREFIX = ""
-    settings.WIKI_META_API_USERNAME = ""
-    settings.WIKI_META_API_PASSWORD = ""
+    # Wiki Meta connection settings (base/api URLs, content model, mcgroup &
+    # course prefixes, API username/password) are set per-environment by the
+    # tutor-contrib-wikilearn plugin via the openedx-cms-development-settings /
+    # openedx-cms-production-settings patches. Only the non-environment-specific
+    # operational defaults live here.
     settings.WIKI_META_API_REQUEST_DELAY_IN_SECONDS = 20
     settings.WIKI_META_API_GET_REQUEST_SYNC_LIMIT = 3
     settings.FETCH_CALL_DAYS_CONFIG_DEFAULT = 3
