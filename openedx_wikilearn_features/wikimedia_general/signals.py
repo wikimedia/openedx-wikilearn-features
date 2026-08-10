@@ -36,9 +36,14 @@ from openedx_wikilearn_features.email.utils import (
 )
 from openedx_wikilearn_features.wikimedia_general.tasks import (
     send_thread_mention_email_task,
+    set_default_course_license_task,
 )
 
 logger = getLogger(__name__)
+
+# Give any open modulestore bulk operation time to close before the license is
+# written. See set_default_course_license_task for why this cannot run inline.
+DEFAULT_LICENSE_TASK_COUNTDOWN = 30
 
 
 @receiver(post_save, sender=CourseOverview)
@@ -81,15 +86,14 @@ def add_default_sortable_advanced_course_module(sender, instance, created, **kwa
 @receiver(post_save, sender=CourseOverview)
 def set_default_license(sender, instance, created, **kwargs):
     if created:
-        course_key = instance.id
-        module_store = modulestore()
-        descriptor = module_store.get_course(course_key)
-
-        # Set default license
-        descriptor.license = "creative-commons: ver=4.0 BY SA"
-        module_store.update_item(descriptor, ModuleStoreEnum.UserID.system)
-
-        logger.info("Default license set via update_from_json for course %s", course_key)
+        # Deferred on purpose: writing the content-scoped `license` field inline
+        # here forks the course definition inside a still-open bulk operation,
+        # which makes a course rerun read its own course back as an ErrorBlock
+        # and discard itself.
+        set_default_course_license_task.apply_async(
+            args=[str(instance.id)], countdown=DEFAULT_LICENSE_TASK_COUNTDOWN
+        )
+        logger.info("Queued default license for course %s", instance.id)
 
 
 @receiver(post_save, sender=CourseOverview)
