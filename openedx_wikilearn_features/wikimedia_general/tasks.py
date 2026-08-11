@@ -166,3 +166,64 @@ def send_weekly_digest_new_post_notification_to_instructors(threads):
         log.info("Notifications queued for recent threads.")
     else:
         log.info("No recent threads to notify.")
+
+
+DEFAULT_COURSE_LICENSE = "creative-commons: ver=4.0 BY SA"
+
+LICENSE_SET = "set"
+LICENSE_PRESERVED = "preserved"
+LICENSE_SKIPPED = "skipped"
+
+
+def apply_default_course_license(course_key, dry_run=False):
+    """
+    Write the default license onto a course that has no license of its own.
+
+    A course that already carries a license keeps it, whatever it is. The license
+    a course is published under is an authoring decision, so this only ever fills
+    a blank, it never replaces a value someone chose. That includes reruns, which
+    inherit the source course's license.
+
+    Must not be called while a modulestore bulk operation is open on the course.
+    `license` is a content-scoped field, so writing it forks the course
+    definition, and a fork made inside an open bulk operation is not yet
+    persisted when the surrounding code reads the course back. That is what made
+    reruns of a course whose license differed from the default load their own
+    course root as an ErrorBlock, which rerun_course then discarded along with
+    the whole rerun.
+
+    Returns LICENSE_SET, LICENSE_PRESERVED or LICENSE_SKIPPED.
+    """
+    from xmodule.modulestore import ModuleStoreEnum
+    from xmodule.modulestore.django import modulestore
+
+    store = modulestore()
+    course = store.get_course(course_key)
+    if course is None or not hasattr(course, "license"):
+        return LICENSE_SKIPPED
+    if course.license:
+        return LICENSE_PRESERVED
+
+    if not dry_run:
+        course.license = DEFAULT_COURSE_LICENSE
+        store.update_item(course, ModuleStoreEnum.UserID.system)
+    return LICENSE_SET
+
+
+@shared_task(base=LoggedTask)
+def set_default_course_license_task(course_id):
+    """
+    Set the default course license once any open bulk operation has closed.
+
+    Deliberately a task rather than inline in the CourseOverview post_save
+    receiver: the overview can be created while a bulk operation is still open,
+    which a course rerun does. See apply_default_course_license. Same reasoning
+    as the delay added upstream for update_discussions_settings_from_course_task
+    (openedx/edx-platform#32038).
+    """
+    course_key = CourseKey.from_string(course_id)
+    result = apply_default_course_license(course_key)
+    if result == LICENSE_SKIPPED:
+        log.warning("Skipped default license for %s: course did not load.", course_key)
+    else:
+        log.info("Default license %s for course %s", result, course_key)
