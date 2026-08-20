@@ -16,6 +16,26 @@ Unreleased
 
 *
 
+1.0.3 - 2026-08-20
+**********************************************
+
+Fixed
+=====
+
+* ``sync_untranslated_strings_to_meta_from_edx`` ignored its ``--base-course-key``
+  option because it read ``base-course-key`` instead of argparse's
+  ``base_course_key`` dest, so the per course send triggered on every translated
+  rerun creation swept every dirty block on the instance instead.
+* Empty message keys are no longer sent to Meta. A single empty value made Meta
+  reject the whole message bundle, which left the block's ``content_updated`` and
+  ``mapping_updated`` flags set and permanently excluded it from the fetch call.
+
+Added
+=====
+
+* ``--base-course-key`` option on ``sync_translated_strings_to_edx_from_meta``, to
+  fetch translations for the reruns of a single base course.
+
 1.0.1 – 2026-07-07
 **********************************************
 
