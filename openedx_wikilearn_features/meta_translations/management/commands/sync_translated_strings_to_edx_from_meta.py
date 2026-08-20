@@ -10,7 +10,7 @@ from logging import getLogger
 
 import aiohttp
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from lms.djangoapps.courseware.courses import get_course_by_id
 from opaque_keys.edx.keys import CourseKey
@@ -42,8 +42,15 @@ class Command(BaseCommand):
     """
     help = 'Command to sync/fetch updated translations from meta to edX'
 
-    _UPDATED_TRANSLATIONS = []
-    _UPDATED_BLOCKS = set([])
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Per run state. These used to be class attributes, which meant the updated blocks of one
+        # run leaked into the next one within the same process i.e the Studio fetch button.
+        self._UPDATED_TRANSLATIONS = []
+        self._UPDATED_BLOCKS = set()
+        self._REQUESTED_GROUPS = 0
+        self._FAILED_GROUPS = 0
+        self._COURSE_LANGUAGES = {}
 
     def add_arguments(self, parser):
         """
@@ -63,15 +70,22 @@ class Command(BaseCommand):
 
     def _log_final_report(self, request_data_dict):
         """
-        Log final results.
+        Log a summary of the run. The full request dict and per translation results are logged at
+        debug level only, they run to megabytes on a full sync.
         """
-        log.info('\n\n\n')
-        log.info("--------------------- WIKI META FETCHED PAGES RESULT- {} ---------------------".format(
-            datetime.now().date().strftime("%m-%d-%Y")
-        ))
-        log.info("Request data dict: {}".format(json.dumps(request_data_dict, indent=4)))
-        log.info("Updated Translations: {}".format(json.dumps(self._UPDATED_TRANSLATIONS, indent=4)))
-        log.info("Updated Blocks: {}".format(self._UPDATED_BLOCKS))
+        outcomes = Counter(result['message'] for result in self._UPDATED_TRANSLATIONS)
+        log.info(
+            "WIKI META FETCH RESULT %s: %d source blocks, %d group requests, %d failed, "
+            "%d translations updated, %d blocks updated.",
+            datetime.now().date().strftime("%m-%d-%Y"), len(request_data_dict), self._REQUESTED_GROUPS,
+            self._FAILED_GROUPS, outcomes.get('Updated', 0), len(self._UPDATED_BLOCKS),
+        )
+        for message, count in outcomes.most_common():
+            log.info("  %s: %d", message, count)
+
+        log.debug("Request data dict: %s", json.dumps(request_data_dict, indent=4))
+        log.debug("Updated translations: %s", json.dumps(self._UPDATED_TRANSLATIONS, indent=4))
+        log.debug("Updated blocks: %s", self._UPDATED_BLOCKS)
 
     def is_translated(self, wiki_translation_obj):
         """
@@ -119,6 +133,29 @@ class Command(BaseCommand):
                 tranlsation_objects.append(obj)
         return tranlsation_objects
 
+    def _get_course_language(self, course_key):
+        """
+        Returns the normalized language code of a course, cached for the duration of the run.
+
+        Returns None if the course is gone or has no language set, rather than letting a single bad
+        course abort the whole sync. This lookup reads the modulestore, and without the cache it ran
+        twice per translation row i.e tens of thousands of reads to resolve a few dozen courses.
+        """
+        cache_key = str(course_key)
+        if cache_key not in self._COURSE_LANGUAGES:
+            language = None
+            try:
+                language = get_course_by_id(course_key).language
+                if not language:
+                    log.warning("Course: %s has no language set, skipping its translations.", cache_key)
+            except Exception:  # pylint: disable=broad-except
+                log.warning("Unable to load course: %s, skipping its translations.", cache_key)
+
+            self._COURSE_LANGUAGES[cache_key] = (
+                WikiMetaClient.normalize_language_code(language) if language else None
+            )
+        return self._COURSE_LANGUAGES[cache_key]
+
     def _get_request_data_dict(self, base_course_key=None):
         """
         Returns dict of data required to fetch updated translations from Wiki Meta.
@@ -144,12 +181,11 @@ class Command(BaseCommand):
             target_block = translation_obj.target_block
             source_block_key = str(source_block.block_id)
             if not target_block.is_source():
-                target_language = WikiMetaClient.normalize_language_code(
-                    get_course_by_id(target_block.course_id).language
-                )
-                source_language = WikiMetaClient.normalize_language_code(
-                    get_course_by_id(source_block.course_id).language
-                )
+                target_language = self._get_course_language(target_block.course_id)
+                source_language = self._get_course_language(source_block.course_id)
+                if not target_language or not source_language:
+                    continue
+
                 if source_block_key in data_dict:
                     data_dict[source_block_key]["target_block_versions"][target_language] = str(target_block.block_id)
                 else:
@@ -343,7 +379,10 @@ class Command(BaseCommand):
         """
         self._UPDATED_TRANSLATIONS = []
         for response in responses:
-            if not response:
+            if not response or response.get('failed'):
+                # The group could not be read from Meta. Counted so that a run which fails every
+                # request cannot look like a run that found nothing to update.
+                self._FAILED_GROUPS += 1
                 continue
 
             response_source_block = response.get('response_source_block')
@@ -353,12 +392,11 @@ class Command(BaseCommand):
                 target_language_code
             )
 
-            if not response_source_block or not response_source_block or not response_source_block or not target_block_id:
-                log.error("Error in updating translations in db due to invalid response or data_dict.")
+            if not response_source_block or not target_block_id:
+                self._FAILED_GROUPS += 1
                 log.error(
-                    "Response details => response_source_block: {}, target_language_code: {}, response_data: {}".format(
-                        response_source_block, response_source_block, response_source_block
-                    )
+                    "Unable to match a Meta response back to a target block. source_block: %s, "
+                    "target_language: %s.", response_source_block, target_language_code,
                 )
                 continue
 
@@ -402,6 +440,7 @@ class Command(BaseCommand):
         async with aiohttp.ClientSession() as session:
             meta_client = WikiMetaClient()
             tasks = self._get_tasks_to_fetch_data_from_wiki_meta(data_dict, meta_client, session)
+            self._REQUESTED_GROUPS = len(tasks)
             responses = await self._request_meta_tasks_in_parallel(
                 tasks,
                 limit=meta_client._API_GET_REQUEST_SYNC_LIMIT,
@@ -450,6 +489,16 @@ class Command(BaseCommand):
                 self.update_transalted_status_of_updated_blocks()
             else:
                 log.info("No Translations need to fetched/updated from Meta Wiki.")
+
+            if self._REQUESTED_GROUPS and self._FAILED_GROUPS == self._REQUESTED_GROUPS:
+                # Recording a fetch date here would make a completely failed run look healthy in
+                # MetaCronJobInfo, which is what hid an outage of this job for weeks.
+                self._log_final_report(data_dict)
+                raise CommandError(
+                    "All {} message group requests to Meta failed, no fetch date recorded.".format(
+                        self._REQUESTED_GROUPS
+                    )
+                )
 
             self.update_info()
             self._log_final_report(data_dict)

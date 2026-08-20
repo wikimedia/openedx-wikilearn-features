@@ -1,6 +1,7 @@
 """
 Client to handle WikiMetaClient requests.
 """
+import asyncio
 import json
 import logging
 import urllib.parse
@@ -16,6 +17,14 @@ class WikiMetaClient(object):
     """
     Client for Meta API requests.
     """
+    # mclimit above 500 is rejected with a warning and silently clamped by Meta.
+    _API_MESSAGE_COLLECTION_LIMIT = 500
+    # A failed request is retried this many times in total, with a growing pause in between,
+    # but only when the failure looks transient i.e a transport error or a throttling response.
+    _API_MAX_ATTEMPTS = 3
+    _API_RETRY_BACKOFF_IN_SECONDS = 5
+    _RETRYABLE_ERROR_CODES = ('ratelimited', 'maxlag', 'readonly', 'internal_api_error_DBQueryError')
+
     def __init__(self):
         """
         Constructs a new instance of the Wiki Meta client.
@@ -54,10 +63,9 @@ class WikiMetaClient(object):
         self._BASE_REDIRECT_URL = configuration_helpers.get_value(
                 'WIKI_META_BASE_REDIRECT_URL', self._BASE_URL)
 
-        logger.info(
-            "Created meta client with base_url: {}, api_url:{}, redirect_url: {} ".format(
-                self._BASE_URL, self._BASE_API_END_POINT, self._BASE_REDIRECT_URL
-            )
+        logger.debug(
+            "Created meta client with base_url: %s, api_url: %s, redirect_url: %s.",
+            self._BASE_URL, self._BASE_API_END_POINT, self._BASE_REDIRECT_URL,
         )
 
     @property
@@ -154,52 +162,95 @@ class WikiMetaClient(object):
                 _, response_translation_obj['key'] = self._seprate_course_prefix_from_string(key)
                 try:
                     block_key = response_translation_obj.get('key').split("/")[3]
-                    response_dict.update({block_key: response_translation_obj})
-                except:
-                    logger.error("Error - unable to process response data list to dict for key: {}.".format(block_key))
+                except IndexError:
+                    logger.error("Unable to read a data type out of Meta response key: %s.", key)
+                    continue
+                response_dict.update({block_key: response_translation_obj})
         return response_dict
 
+
+    @staticmethod
+    def _request_summary(request_params, request_data):
+        """
+        Returns a short identifier of a request for log lines, so that a failure can be traced back
+        to a message group without dumping the whole request. Page text and credentials are left out.
+        """
+        source = request_params or request_data or {}
+        summary = {key: source.get(key) for key in ('action', 'mcgroup', 'mclanguage', 'title') if source.get(key)}
+        return json.dumps(summary, ensure_ascii=False)
 
     async def parse_response(self, request_params, request_data, response):
         """
         Parses and return the response.
         """
+        summary = self._request_summary(request_params, request_data)
         try:
             data = await response.json()
         except (aiohttp.ContentTypeError, ValueError, aiohttp.ClientError) as e:
-            logger.error("Unable to extract json data from Meta response.")
-            logger.error(f"Error type: {type(e).__name__}, Error: {e}")
-            error_text = await response.text()
-            logger.error(f"Response content: {error_text}")
-            data = None
+            logger.error(
+                "Meta API response could not be decoded for request %s, status %s: %s: %s.",
+                summary, response.status, type(e).__name__, e,
+            )
+            logger.debug("Meta API response content: %s", await response.text())
+            return False, None
 
-        logger.info("For Meta request with data: {}, params: {}.".format(request_data, request_params))
         if data is not None and response.status in [200, 201]:
-            if data.get('error'):
-                logger.error("Meta API returned error code in response: %s.", json.dumps(data))
+            error = data.get('error') or {}
+            if error:
+                logger.error(
+                    "Meta API returned error '%s' for request %s: %s",
+                    error.get('code'), summary, error.get('info'),
+                )
                 return False, data
 
-            logger.info("Meta API returned success response: %s.", json.dumps(data))
+            if data.get('warnings'):
+                logger.warning(
+                    "Meta API returned warnings for request %s: %s",
+                    summary, json.dumps(data.get('warnings'), ensure_ascii=False),
+                )
+
+            logger.debug("Meta API success response for request %s: %s", summary, json.dumps(data))
             return True, data
 
-        else:
-            logger.error("Meta API return response with status code: %s.", response.status)
-            logger.error("Meta API return Error response: %s.", json.dumps(data))
-            return False, data
+        logger.error(
+            "Meta API returned status %s for request %s: %s",
+            response.status, summary, json.dumps(data, ensure_ascii=False)[:500],
+        )
+        return False, data
 
 
     async def handle_request(self, request_call, params=None, data=None):
         """
         Handles all Meta API calls.
+
+        A transport level failure is reported the same way as a rejected response, so that a single
+        broken request cannot abort a whole sync run through asyncio.gather.
         """
         headers = {'User-Agent': self.wikimedia_user_agent}
-        response = await request_call(url=self._BASE_API_END_POINT, params=params, data=data, headers=headers)
-        logger.info("Sending Meta request with data: {}, params: {}, headers: {}.".format(data, params, headers))
+        summary = self._request_summary(params, data)
+        logger.debug("Sending Meta request %s with headers: %s.", summary, headers)
+        try:
+            response = await request_call(url=self._BASE_API_END_POINT, params=params, data=data, headers=headers)
+        except (aiohttp.ClientError, asyncio.TimeoutError) as error:
+            logger.error(
+                "Meta API request %s failed to complete: %s: %s.", summary, type(error).__name__, error
+            )
+            return False, None
+
         return await self.parse_response(params, data, response)
+
+    def _is_retryable(self, response_data):
+        """
+        Returns True if a failed response looks transient and is worth retrying.
+        """
+        if response_data is None:
+            # Transport error, or a body we could not decode.
+            return True
+        return (response_data.get('error') or {}).get('code') in self._RETRYABLE_ERROR_CODES
 
 
     async def fetch_login_token(self, session):
-        logger.info("Initiate Meta login token request.")
+        logger.debug("Initiate Meta login token request.")
         params = {
             "action": "query",
             "meta": "tokens",
@@ -210,7 +261,7 @@ class WikiMetaClient(object):
         success, response_data = await self.handle_request(session.get, params=params, data=None)
         if success:
             token = response_data.get('query', {}).get('tokens', {}).get('logintoken', {})
-            logger.info("User token has been fetched: %s.", token)
+            logger.debug("Login token has been fetched.")
             return token
 
 
@@ -219,7 +270,7 @@ class WikiMetaClient(object):
         if not token:
             raise Exception("Meta Client Error: Unable to get Login Token from Meta.")
 
-        logger.info("Initiate Meta login request with generated login-token.")
+        logger.debug("Initiate Meta login request with generated login-token.")
         post_data = {
            "action": "login",
            "lgname": self._API_USERNAME,
@@ -237,7 +288,7 @@ class WikiMetaClient(object):
 
 
     async def fetch_csrf_token(self, session):
-        logger.info("Initiate Meta CSRF token request.")
+        logger.debug("Initiate Meta CSRF token request.")
         params = {
             "action": "query",
             "meta": "tokens",
@@ -247,7 +298,7 @@ class WikiMetaClient(object):
         success, response_data = await self.handle_request(session.get, params=params, data=None)
         if success:
             csrf_token = response_data.get('query', {}).get('tokens', {}).get('csrftoken', {})
-            logger.info("CSRF token has been set: %s.", csrf_token)
+            logger.debug("CSRF token has been fetched.")
             return csrf_token
 
 
@@ -278,7 +329,12 @@ class WikiMetaClient(object):
 
 
     async def sync_translations(self, mcgroup, mclanguage, session):
-        logger.info("{}-{}".format(self._MCGROUP_PREFIX, mcgroup))
+        """
+        Fetches the translations of a message group in one language.
+
+        Always returns a dict. On failure the 'failed' flag is set instead of returning None, so that
+        callers can tell a group with no translations apart from a group we never managed to read.
+        """
         updated_mcgroup = (self._COURSE_PREFIX + mcgroup).replace("_", " ")
         updated_mcgroup = updated_mcgroup[0].upper() + updated_mcgroup[1:]
         params = {
@@ -290,20 +346,41 @@ class WikiMetaClient(object):
             "mcgroup": "{}-{}".format(self._MCGROUP_PREFIX, updated_mcgroup),
             "mclanguage": mclanguage,
             "mcprop": "translation|properties",
-            "mclimit": 5000
+            "mclimit": self._API_MESSAGE_COLLECTION_LIMIT
         }
-        success, response_data = await self.handle_request(session.get, params=params, data=None)
-        if success:
-            translation_state = response_data.get('query', {}).get('metadata', {}).get('state', "")
-            logger.info("Translation_state:{} for {}.".format(translation_state, mcgroup))
 
-            response_data_dict = self._process_fetched_response_data_list_to_dict(
-                response_data.get('query', {}).get('messagecollection', [])
+        # mcgroup is in this format: source_course_id/source_lang_code/source_block_key
+        result = {
+            'response_source_block': mcgroup.split("/")[2],
+            'mclanguage': mclanguage,
+            'response_data': {},
+            'failed': True,
+        }
+
+        for attempt in range(1, self._API_MAX_ATTEMPTS + 1):
+            success, response_data = await self.handle_request(session.get, params=params, data=None)
+            if success:
+                break
+
+            if attempt == self._API_MAX_ATTEMPTS or not self._is_retryable(response_data):
+                logger.error(
+                    "Giving up on message group %s in language %s after %d attempt(s).",
+                    updated_mcgroup, mclanguage, attempt,
+                )
+                return result
+
+            delay = self._API_RETRY_BACKOFF_IN_SECONDS * attempt
+            logger.warning(
+                "Retrying message group %s in language %s in %ss, attempt %d of %d.",
+                updated_mcgroup, mclanguage, delay, attempt + 1, self._API_MAX_ATTEMPTS,
             )
+            await asyncio.sleep(delay)
 
-            # mcgroup will be in this format source_course_id/source_lang_code/source_block_key
-            return {
-                'response_source_block': mcgroup.split("/")[2],
-                'mclanguage': mclanguage,
-                'response_data': response_data_dict
-            }
+        translation_state = response_data.get('query', {}).get('metadata', {}).get('state', "")
+        logger.debug("Translation state %s for %s in %s.", translation_state, mcgroup, mclanguage)
+
+        result['response_data'] = self._process_fetched_response_data_list_to_dict(
+            response_data.get('query', {}).get('messagecollection', [])
+        )
+        result['failed'] = False
+        return result
