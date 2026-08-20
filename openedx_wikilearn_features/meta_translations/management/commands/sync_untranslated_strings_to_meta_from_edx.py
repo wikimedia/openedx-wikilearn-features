@@ -44,10 +44,16 @@ class Command(BaseCommand):
     help = 'Command to send untranslated strings to Meta server for translation'
     # Keys of a request dict that are not translatable messages.
     _RESERVED_REQUEST_KEYS = ('title', '@metadata')
-    _RESULT = {
-        "updated_blocks_count": 0,
-        "success_updated_pages_count": 0
-    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Per run state. This used to be a class attribute, so counts accumulated across runs
+        # within the same process i.e the Studio send button.
+        self._RESULT = {
+            "updated_blocks_count": 0,
+            "success_updated_pages_count": 0,
+            "failed_pages_count": 0,
+        }
 
     def add_arguments(self, parser):
         """
@@ -69,12 +75,13 @@ class Command(BaseCommand):
         """
         Log final stats.
         """
-        log.info('\n\n\n')
-        log.info("--------------------- WIKI META UPDATED PAGES STATS - {} ---------------------".format(
-            datetime.now().date().strftime("%m-%d-%Y")
-        ))
-        log.info('Total number of updated blocks: {}'.format(self._RESULT.get("updated_blocks_count")))
-        log.info('Total blocks updated successfully: {}'.format(self._RESULT.get("success_updated_pages_count")))
+        log.info(
+            "WIKI META SEND RESULT %s: %d blocks to update, %d pages updated, %d pages failed.",
+            datetime.now().date().strftime("%m-%d-%Y"),
+            self._RESULT.get("updated_blocks_count"),
+            self._RESULT.get("success_updated_pages_count"),
+            self._RESULT.get("failed_pages_count"),
+        )
 
     def _create_request_dict_for_block(self, base_course, block, block_data, base_course_language, base_course_name, base_course_description):
         """
@@ -241,6 +248,10 @@ class Command(BaseCommand):
         mapping_updated (either direction_flag is updated or block mapping is updated i.e new lang re-run block added/deleted)
         """
         success_responses_count = 0
+        self._RESULT["failed_pages_count"] = len([
+            response for response in responses
+            if not response or response.get("result", "").lower() != "success"
+        ])
         for response in responses:
             if response and response.get("result", "").lower() == "success":
                 # title format is course_id/course_lang_code/block_id

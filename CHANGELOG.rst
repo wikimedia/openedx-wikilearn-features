@@ -16,6 +16,33 @@ Unreleased
 
 *
 
+1.0.4 - 2026-08-20
+**********************************************
+
+Fixed
+=====
+
+* A failed Meta request no longer looks like a successful sync. ``sync_translations``
+  reports failure explicitly instead of returning ``None``, failed message groups are
+  counted, and ``sync_translated_strings_to_edx_from_meta`` refuses to record a fetch
+  date when every request failed.
+* A transport error on one request no longer aborts a whole sync run through
+  ``asyncio.gather``, and throttling or read only responses are retried with a backoff.
+* ``get_course_by_id`` results are cached per run in the fetch call, which ran two
+  uncached modulestore reads per translation row, and a course that is missing or has
+  no language is skipped with a warning instead of aborting the run.
+* Per run counters are no longer class attributes, so results of one run in a process
+  do not leak into the next.
+* ``mclimit`` lowered to 500, the documented maximum. Meta warned and clamped 5000.
+
+Changed
+=======
+
+* Meta client logging is quieter and more useful. Request and response bodies moved to
+  debug level, log lines identify the message group and language they refer to, the
+  final reports are one line summaries with a breakdown by outcome, and login and CSRF
+  tokens are no longer written to the logs.
+
 1.0.3 - 2026-08-20
 **********************************************
 
