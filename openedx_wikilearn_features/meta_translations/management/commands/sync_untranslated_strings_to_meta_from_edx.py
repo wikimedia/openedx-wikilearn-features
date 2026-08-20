@@ -37,8 +37,13 @@ class Command(BaseCommand):
 
         $ ./manage.py cms sync_untranslated_strings_to_meta_from_edx --commit
         It will send API calls of Wiki Meta to update message groups.
+
+        $ ./manage.py cms sync_untranslated_strings_to_meta_from_edx --commit -bck <base_course_key>
+        It will only send the updated blocks of the given base course.
     """
     help = 'Command to send untranslated strings to Meta server for translation'
+    # Keys of a request dict that are not translatable messages.
+    _RESERVED_REQUEST_KEYS = ('title', '@metadata')
     _RESULT = {
         "updated_blocks_count": 0,
         "success_updated_pages_count": 0
@@ -95,8 +100,11 @@ class Command(BaseCommand):
             block.block_type, base_course_name, base_course_description
         )
         
+        display_name_data = block_data.filter(data_type="display_name").first()
         label = "WikiLearn - {} - {}: {}".format(
-            base_course_name, get_studio_component_name(block.block_type), block_data.filter(data_type="display_name")[0].data
+            base_course_name,
+            get_studio_component_name(block.block_type),
+            display_name_data.data if display_name_data and display_name_data.data else str(block.block_id),
         )
 
         request["@metadata"] = {
@@ -153,15 +161,42 @@ class Command(BaseCommand):
                     request_arguments = self._create_request_dict_for_block(
                         base_course, block, block_data, base_course_language, base_course_name, base_course_description
                     )
+                    empty_keys = []
                     for data in block_data:
                         if data.parsed_keys:
-                            request_arguments.update(data.parsed_keys)
+                            for key, value in data.parsed_keys.items():
+                                if value:
+                                    request_arguments[key] = value
+                                else:
+                                    empty_keys.append(key)
+                        elif data.data:
+                            request_arguments[data.data_type] = data.data
                         else:
-                            request_arguments.update({
-                                data.data_type: data.data
-                            })
+                            empty_keys.append(data.data_type)
+
+                    if empty_keys:
+                        # Meta rejects an entire message bundle with a validation error if any key
+                        # has an empty value. That leaves content_updated/mapping_updated set on the
+                        # block forever, and the fetch job skips blocks whose data is still dirty,
+                        # so the block's translations can never be pulled back. Send the rest.
+                        log.warning(
+                            "Skipping empty keys %s of block: %s.", empty_keys, block.block_id
+                        )
+
+                    if not self._get_message_keys(request_arguments):
+                        log.warning(
+                            "Skipping block: %s, it has no non-empty translatable data.", block.block_id
+                        )
+                        continue
+
                     data_list.append(request_arguments)
         return data_list
+
+    def _get_message_keys(self, request_arguments):
+        """
+        Returns translatable message keys of a request dict i.e all keys except the reserved ones.
+        """
+        return [key for key in request_arguments if key not in self._RESERVED_REQUEST_KEYS]
 
     def _get_tasks_to_updated_data_on_wiki_meta(self, data_list, meta_client, session, csrf_token):
         """
@@ -278,9 +313,11 @@ class Command(BaseCommand):
         Send translations to the Meta Server
         """
         base_courses = []
-        if options.get('base-course-key'):
-            base_courses = [CourseKey.from_string(base_courses)]
-        
+        base_course_key = options.get('base_course_key')
+        if base_course_key:
+            base_courses = [CourseKey.from_string(base_course_key)]
+            log.info("Sending strings of base course: %s only.", base_course_key)
+
         data_list = self._get_request_data_list(base_courses)
         if options.get('commit'):
             self._RESULT.update({"updated_blocks_count": len(data_list)})

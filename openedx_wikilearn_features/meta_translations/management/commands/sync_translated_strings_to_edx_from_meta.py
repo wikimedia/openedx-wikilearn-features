@@ -13,6 +13,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from lms.djangoapps.courseware.courses import get_course_by_id
+from opaque_keys.edx.keys import CourseKey
 
 from openedx_wikilearn_features.meta_translations.meta_client import WikiMetaClient
 from openedx_wikilearn_features.meta_translations.models import (
@@ -35,6 +36,9 @@ class Command(BaseCommand):
 
         $ ./manage.py cms sync_translated_strings_to_edx_from_meta --commit
         It will send API calls of Wiki Meta to fetch updated translations from meta.
+
+        $ ./manage.py cms sync_translated_strings_to_edx_from_meta --commit -bck <base_course_key>
+        It will only fetch translations for the reruns of the given base course.
     """
     help = 'Command to sync/fetch updated translations from meta to edX'
 
@@ -49,6 +53,12 @@ class Command(BaseCommand):
             '--commit',
             action='store_true',
             help='Send API calls to Meta wiki',
+        )
+        parser.add_argument(
+            '-bck',
+            '--base-course-key',
+            help='Limit the fetch call to the reruns of this base course',
+            default=None,
         )
 
     def _log_final_report(self, request_data_dict):
@@ -79,7 +89,7 @@ class Command(BaseCommand):
         else:
             return False
 
-    def _get_transation_objects_for_fetch_call(self):
+    def _get_transation_objects_for_fetch_call(self, base_course_key=None):
         """
         Returns list of WikiTranslation objects for fetch call.
         Translations fot Blocks will only be checked at meta server in following cases:
@@ -96,14 +106,20 @@ class Command(BaseCommand):
             days_settings = meta_config.days_settings_for_fetch_call
 
         comparison_date = (timezone.now() - timedelta(days=days_settings)).date()
-        for obj in WikiTranslation.objects.all().select_related("target_block").select_related(
+        translations = WikiTranslation.objects.all()
+        if base_course_key:
+            translations = translations.filter(
+                source_block_data__course_block__course_id=base_course_key
+            )
+
+        for obj in translations.select_related("target_block").select_related(
             "source_block_data", "source_block_data__course_block"
         ):
             if not obj.source_block_data.content_updated and (not obj.last_fetched or not self.is_translated(obj) or obj.last_fetched.date() <=comparison_date):
                 tranlsation_objects.append(obj)
         return tranlsation_objects
 
-    def _get_request_data_dict(self):
+    def _get_request_data_dict(self, base_course_key=None):
         """
         Returns dict of data required to fetch updated translations from Wiki Meta.
         Translations need to be fetched only if direction_flag of target block is destination.
@@ -121,7 +137,7 @@ class Command(BaseCommand):
             ...
         }
         """
-        translation_objects = self._get_transation_objects_for_fetch_call()
+        translation_objects = self._get_transation_objects_for_fetch_call(base_course_key)
         data_dict = {}
         for translation_obj in translation_objects:
             source_block = translation_obj.source_block_data.course_block
@@ -421,7 +437,12 @@ class Command(BaseCommand):
             MetaCronJobInfo.objects.create(fetched_date = datetime.now())
 
     def handle(self, *args, **options):
-        data_dict = self._get_request_data_dict()
+        base_course_key = options.get('base_course_key')
+        if base_course_key:
+            base_course_key = CourseKey.from_string(base_course_key)
+            log.info("Fetching translations of base course: %s only.", base_course_key)
+
+        data_dict = self._get_request_data_dict(base_course_key)
 
         if options.get('commit'):
             if data_dict:
