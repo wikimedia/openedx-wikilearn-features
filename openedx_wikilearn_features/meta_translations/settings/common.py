@@ -43,5 +43,15 @@ def plugin_settings(settings):
     # openedx-cms-production-settings patches. Only the non-environment-specific
     # operational defaults live here.
     settings.WIKI_META_API_REQUEST_DELAY_IN_SECONDS = 20
-    settings.WIKI_META_API_GET_REQUEST_SYNC_LIMIT = 3
+    # Fetch call throttling. Meta rate-limits at the CDN edge per source IP; exceeding it
+    # returns a 429 HTML page for every subsequent request. SYNC_LIMIT requests are sent
+    # concurrently, then the job sleeps GET_REQUEST_DELAY seconds before the next batch,
+    # giving a ceiling of SYNC_LIMIT/GET_REQUEST_DELAY requests per second.
+    settings.WIKI_META_API_GET_REQUEST_SYNC_LIMIT = 2
+    settings.WIKI_META_API_GET_REQUEST_DELAY_IN_SECONDS = 1
+    # Per-request retries when Meta answers 429, backing off between attempts.
+    settings.WIKI_META_API_MAX_RETRIES = 3
+    # Abort the fetch run after this many consecutive fully-failed batches, rather than
+    # spending the rest of the run hammering a service that asked us to slow down.
+    settings.WIKI_META_API_MAX_CONSECUTIVE_FAILED_BATCHES = 5
     settings.FETCH_CALL_DAYS_CONFIG_DEFAULT = 3
