@@ -1,6 +1,7 @@
 """
 Client to handle WikiMetaClient requests.
 """
+import asyncio
 import json
 import logging
 import urllib.parse
@@ -34,7 +35,14 @@ class WikiMetaClient(object):
                 'WIKI_META_API_REQUEST_DELAY_IN_SECONDS', settings.WIKI_META_API_REQUEST_DELAY_IN_SECONDS)
         self._API_GET_REQUEST_SYNC_LIMIT = configuration_helpers.get_value(
                 'WIKI_META_API_GET_REQUEST_SYNC_LIMIT', settings.WIKI_META_API_GET_REQUEST_SYNC_LIMIT)
-        
+        self._API_GET_REQUEST_DELAY = configuration_helpers.get_value(
+                'WIKI_META_API_GET_REQUEST_DELAY_IN_SECONDS', settings.WIKI_META_API_GET_REQUEST_DELAY_IN_SECONDS)
+        self._API_MAX_RETRIES = configuration_helpers.get_value(
+                'WIKI_META_API_MAX_RETRIES', settings.WIKI_META_API_MAX_RETRIES)
+        self._API_MAX_CONSECUTIVE_FAILED_BATCHES = configuration_helpers.get_value(
+                'WIKI_META_API_MAX_CONSECUTIVE_FAILED_BATCHES',
+                settings.WIKI_META_API_MAX_CONSECUTIVE_FAILED_BATCHES)
+
         if not self._COURSE_PREFIX:
             self._COURSE_PREFIX = ''
         
@@ -170,6 +178,10 @@ class WikiMetaClient(object):
             logger.error("Unable to extract json data from Meta response.")
             logger.error(f"Error type: {type(e).__name__}, Error: {e}")
             error_text = await response.text()
+            # Meta's error pages are ~7KB of HTML. Logging them whole turns a throttled run
+            # into a multi-gigabyte log without adding information, so keep only the head.
+            if len(error_text) > 500:
+                error_text = "{}... [truncated {} chars]".format(error_text[:500], len(error_text) - 500)
             logger.error(f"Response content: {error_text}")
             data = None
 
@@ -188,13 +200,53 @@ class WikiMetaClient(object):
             return False, data
 
 
+    def _get_retry_delay(self, response, attempt):
+        """
+        Returns seconds to wait before retrying a rate-limited request.
+
+        Meta sends Retry-After on some throttle responses; honour it when present and fall
+        back to exponential backoff otherwise.
+        """
+        retry_after = response.headers.get('Retry-After')
+        if retry_after:
+            try:
+                return max(1, int(retry_after))
+            except (TypeError, ValueError):
+                logger.warning("Unparsable Retry-After header from Meta: %s.", retry_after)
+        return self._API_GET_REQUEST_DELAY * (2 ** attempt)
+
     async def handle_request(self, request_call, params=None, data=None):
         """
         Handles all Meta API calls.
+
+        Retries on HTTP 429. Meta rate-limits at its CDN edge per source IP and answers with
+        an HTML error page rather than JSON, so a throttled request cannot be distinguished
+        from a genuine failure by the response body alone - it has to be retried on status.
         """
         headers = {'User-Agent': self.wikimedia_user_agent}
-        response = await request_call(url=self._BASE_API_END_POINT, params=params, data=data, headers=headers)
-        logger.info("Sending Meta request with data: {}, params: {}, headers: {}.".format(data, params, headers))
+        for attempt in range(self._API_MAX_RETRIES + 1):
+            response = await request_call(url=self._BASE_API_END_POINT, params=params, data=data, headers=headers)
+            logger.info("Sending Meta request with data: {}, params: {}, headers: {}.".format(data, params, headers))
+
+            if response.status != 429:
+                break
+
+            if attempt == self._API_MAX_RETRIES:
+                logger.error(
+                    "Meta rate-limited this request and it exhausted all %s retries. Params: %s.",
+                    self._API_MAX_RETRIES, params,
+                )
+                break
+
+            delay = self._get_retry_delay(response, attempt)
+            logger.warning(
+                "Meta returned 429 (rate limited). Retrying in %ss (attempt %s of %s).",
+                delay, attempt + 1, self._API_MAX_RETRIES,
+            )
+            # Free the connection before sleeping; the body is Meta's HTML throttle page.
+            await response.release()
+            await asyncio.sleep(delay)
+
         return await self.parse_response(params, data, response)
 
 
@@ -290,7 +342,9 @@ class WikiMetaClient(object):
             "mcgroup": "{}-{}".format(self._MCGROUP_PREFIX, updated_mcgroup),
             "mclanguage": mclanguage,
             "mcprop": "translation|properties",
-            "mclimit": 5000
+            # Meta caps mclimit at 500 unless the account holds apihighlimits; anything
+            # larger is rejected with a warning and silently clamped.
+            "mclimit": 500
         }
         success, response_data = await self.handle_request(session.get, params=params, data=None)
         if success:

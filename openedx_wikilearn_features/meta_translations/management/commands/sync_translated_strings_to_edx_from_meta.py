@@ -40,6 +40,8 @@ class Command(BaseCommand):
 
     _UPDATED_TRANSLATIONS = []
     _UPDATED_BLOCKS = set([])
+    _TOTAL_REQUESTS = 0
+    _FAILED_REQUESTS = 0
 
     def add_arguments(self, parser):
         """
@@ -62,6 +64,18 @@ class Command(BaseCommand):
         log.info("Request data dict: {}".format(json.dumps(request_data_dict, indent=4)))
         log.info("Updated Translations: {}".format(json.dumps(self._UPDATED_TRANSLATIONS, indent=4)))
         log.info("Updated Blocks: {}".format(self._UPDATED_BLOCKS))
+
+        # A run in which Meta refused most requests still updates whatever did get through,
+        # so success counts alone read as a healthy run. Report the failures explicitly.
+        if self._FAILED_REQUESTS:
+            log.error(
+                "Meta requests failed: %s of %s (%.1f%%). Those translations were not fetched "
+                "and will be retried on the next run.",
+                self._FAILED_REQUESTS, self._TOTAL_REQUESTS,
+                (self._FAILED_REQUESTS * 100.0 / self._TOTAL_REQUESTS) if self._TOTAL_REQUESTS else 0,
+            )
+        else:
+            log.info("Meta requests failed: 0 of %s.", self._TOTAL_REQUESTS)
 
     def is_translated(self, wiki_translation_obj):
         """
@@ -328,6 +342,7 @@ class Command(BaseCommand):
         self._UPDATED_TRANSLATIONS = []
         for response in responses:
             if not response:
+                self._FAILED_REQUESTS += 1
                 continue
 
             response_source_block = response.get('response_source_block')
@@ -366,16 +381,46 @@ class Command(BaseCommand):
                 )
         return tasks
 
-    async def _request_meta_tasks_in_parallel(self, tasks, limit=3):
+    async def _request_meta_tasks_in_parallel(self, tasks, limit=3, delay_in_sec=0, max_consecutive_failed_batches=0):
         """
         Executes tasks in parallel in a sequential manner.
         It devides tasks in sub-tasks with length equals to limit and call subtasks in parallel.
+
+        Sleeps delay_in_sec between batches so the job stays under Meta's per-IP rate limit,
+        and gives up after max_consecutive_failed_batches batches in which every request
+        failed - at that point Meta is refusing us wholesale and continuing only makes it
+        worse. Abandoned tasks are cancelled and returned as None; their translations keep
+        their existing last_fetched, so the next run picks them up again.
         """
         responses = []
-        for index in range(0, len(tasks), limit):
+        total = len(tasks)
+        consecutive_failed_batches = 0
+
+        for index in range(0, total, limit):
             sub_tasks = tasks[index:index+limit]
             sub_responses = await asyncio.gather(*sub_tasks)
             responses.extend(sub_responses)
+
+            if all(response is None for response in sub_responses):
+                consecutive_failed_batches += 1
+            else:
+                consecutive_failed_batches = 0
+
+            if max_consecutive_failed_batches and consecutive_failed_batches >= max_consecutive_failed_batches:
+                remaining = tasks[index+limit:]
+                log.error(
+                    "Aborting fetch run: %s consecutive batches failed entirely. "
+                    "%s of %s requests were not attempted and will be retried on the next run.",
+                    consecutive_failed_batches, len(remaining), total,
+                )
+                for task in remaining:
+                    task.close()
+                responses.extend([None] * len(remaining))
+                break
+
+            if delay_in_sec and index + limit < total:
+                await asyncio.sleep(delay_in_sec)
+
         return responses
 
     async def async_fetch_data_from_wiki_meta(self, data_dict):
@@ -386,9 +431,18 @@ class Command(BaseCommand):
         async with aiohttp.ClientSession() as session:
             meta_client = WikiMetaClient()
             tasks = self._get_tasks_to_fetch_data_from_wiki_meta(data_dict, meta_client, session)
+            self._TOTAL_REQUESTS = len(tasks)
+            log.info(
+                "Fetching %s message groups from Meta at up to %s request(s) every %ss.",
+                self._TOTAL_REQUESTS,
+                meta_client._API_GET_REQUEST_SYNC_LIMIT,
+                meta_client._API_GET_REQUEST_DELAY,
+            )
             responses = await self._request_meta_tasks_in_parallel(
                 tasks,
                 limit=meta_client._API_GET_REQUEST_SYNC_LIMIT,
+                delay_in_sec=meta_client._API_GET_REQUEST_DELAY,
+                max_consecutive_failed_batches=meta_client._API_MAX_CONSECUTIVE_FAILED_BATCHES,
             )
             self._update_response_translations_in_db(data_dict, responses)
 
