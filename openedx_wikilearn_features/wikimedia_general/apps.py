@@ -35,8 +35,14 @@ class WikimediaGeneralConfig(AppConfig):
 
     def ready(self):
         import openedx_wikilearn_features.wikimedia_general.signals  # pylint: disable=unused-import  # noqa: F401
+        from openedx_wikilearn_features.username_sync import (
+            install_pipeline_step,  # pylint: disable=import-outside-toplevel
+        )
         from openedx_wikilearn_features.wikimedia_general.utils import (
             load_core_patches,  # pylint: disable=import-outside-toplevel
         )
 
         load_core_patches()
+        # Must happen here rather than in plugin settings: third_party_auth
+        # rebuilds SOCIAL_AUTH_PIPELINE from scratch in its own ready().
+        install_pipeline_step()
