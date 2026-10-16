@@ -1,24 +1,25 @@
 Change Log
 ##########
 
+This file includes a history of past releases. Changes that were not yet added to a release are in the
+`changelog.d/ <https://github.com/wikimedia/openedx-wikilearn-features/tree/master/changelog.d>`_ folder.
+
 ..
-   All enhancements and patches to openedx_wikilearn_features will be documented
-   in this file.  It adheres to the structure of https://keepachangelog.com/ ,
-   but in reStructuredText instead of Markdown (for ease of incorporation into
-   Sphinx documentation and the PyPI description).
+   ⚠️ DO NOT ADD YOUR CHANGES TO THIS FILE! (unless you want to modify existing changelog entries in this file)
+   Changelog entries are managed by scriv. After you have made some changes, create a changelog entry with:
+
+       make changelog-entry
+
+   Edit and commit the newly-created file in changelog.d.
+
+   If you need to create a new release, bump the version in openedx_wikilearn_features/__init__.py,
+   then collect changelog entries in the same commit with:
+
+       make changelog
 
    This project adheres to Semantic Versioning (https://semver.org/).
 
-.. There should always be an "Unreleased" section for changes pending release.
-
-Unreleased
-**********
-
-Fixed
-=====
-
-* Count a course as completed when the learner passed it, not only when their
-  letter grade is "Pass", so courses with custom grade cutoffs are counted.
+.. scriv-insert-here
 
 1.0.1 – 2026-07-07
 **********************************************

@@ -1,7 +1,7 @@
 .PHONY: clean clean_tox compile_translations coverage diff_cover docs dummy_translations \
         extract_translations fake_translations help pii_check pull_translations \
         quality requirements selfcheck test test-all upgrade compile-requirements validate install_transifex_client \
-        package publish
+        package publish changelog changelog-entry
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +28,12 @@ package: clean ## build sdist and wheel using Hatch
 
 publish: package ## publish the build artifacts using Hatch
 	hatch publish
+
+changelog-entry: ## create a new changelog entry in changelog.d/
+	scriv create
+
+changelog: ## collect changelog.d/ entries in CHANGELOG.rst, run when bumping the version
+	scriv collect
 
 clean_tox: ## clear tox requirements cache
 	rm -fr .tox

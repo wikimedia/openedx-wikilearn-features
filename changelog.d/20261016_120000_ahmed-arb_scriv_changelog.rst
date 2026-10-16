@@ -1,0 +1,1 @@
+- [Improvement] Manage the changelog with scriv: add entries as files in ``changelog.d/`` with ``make changelog-entry`` instead of editing ``CHANGELOG.rst``, so PRs no longer conflict on it. (by @ahmed-arb)
