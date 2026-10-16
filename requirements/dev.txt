@@ -11,6 +11,8 @@ astroid==3.3.11
     #   -r requirements/quality.txt
     #   pylint
     #   pylint-celery
+attrs==26.1.0
+    # via scriv
 build==1.3.0
     # via
     #   -r requirements/pip-tools.txt
@@ -19,11 +21,15 @@ cachetools==6.2.0
     # via
     #   -r requirements/ci.txt
     #   tox
+certifi==2026.7.22
+    # via requests
 chardet==5.2.0
     # via
     #   -r requirements/ci.txt
     #   diff-cover
     #   tox
+charset-normalizer==3.5.2
+    # via requests
 click==8.3.0
     # via
     #   -r requirements/pip-tools.txt
@@ -32,10 +38,12 @@ click==8.3.0
     #   code-annotations
     #   edx-lint
     #   pip-tools
+    #   scriv
 click-log==0.4.0
     # via
     #   -r requirements/quality.txt
     #   edx-lint
+    #   scriv
 code-annotations==2.3.0
     # via
     #   -r requirements/quality.txt
@@ -71,6 +79,8 @@ filelock==3.19.1
     #   -r requirements/ci.txt
     #   tox
     #   virtualenv
+idna==3.20
+    # via requests
 iniconfig==2.1.0
     # via
     #   -r requirements/quality.txt
@@ -84,12 +94,15 @@ jinja2==3.1.6
     #   -r requirements/quality.txt
     #   code-annotations
     #   diff-cover
+    #   scriv
 lxml[html-clean]==6.0.2
     # via
     #   edx-i18n-tools
     #   lxml-html-clean
 lxml-html-clean==0.4.2
     # via lxml
+markdown-it-py==4.2.0
+    # via scriv
 markupsafe==3.0.3
     # via
     #   -r requirements/quality.txt
@@ -98,6 +111,8 @@ mccabe==0.7.0
     # via
     #   -r requirements/quality.txt
     #   pylint
+mdurl==0.1.2
+    # via markdown-it-py
 openedx-atlas==0.7.0
     # via -r requirements/quality.txt
 packaging==25.0
@@ -111,7 +126,7 @@ packaging==25.0
     #   tox
 path==16.16.0
     # via edx-i18n-tools
-pip-tools==7.5.1
+pip-tools==7.5.2
     # via -r requirements/pip-tools.txt
 platformdirs==4.4.0
     # via
@@ -186,6 +201,10 @@ pyyaml==6.0.3
     #   -r requirements/quality.txt
     #   code-annotations
     #   edx-i18n-tools
+requests==2.34.2
+    # via scriv
+scriv==1.8.0
+    # via -r requirements/dev.in
 six==1.17.0
     # via
     #   -r requirements/quality.txt
@@ -210,6 +229,8 @@ tomlkit==0.13.3
     #   pylint
 tox==4.30.2
     # via -r requirements/ci.txt
+urllib3==2.8.0
+    # via requests
 virtualenv==20.34.0
     # via
     #   -r requirements/ci.txt
