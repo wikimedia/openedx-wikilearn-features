@@ -1,0 +1,6 @@
+.btn-translations.btn-action {
+    cursor: pointer;
+  }
+  .btn-translations.btn-action.disabled {
+    cursor: not-allowed;
+  }
