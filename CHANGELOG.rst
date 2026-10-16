@@ -24,6 +24,8 @@ Fixed
 
 * Count a course as completed when the learner passed it, not only when their
   letter grade is "Pass", so courses with custom grade cutoffs are counted.
+* Fix wording of user-facing meta translations and messenger search error
+  messages.
 
 1.0.1 – 2026-07-07
 **********************************************
