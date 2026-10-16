@@ -1,9 +1,14 @@
 from celery.states import SUCCESS
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.translation import gettext as _
+from django.utils.translation import ngettext, override
 from lms.djangoapps.instructor_task.models import InstructorTask
 from opaque_keys import InvalidKeyError
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
+from openedx.core.djangoapps.user_api.models import UserPreference
 
 from openedx_wikilearn_features.admin_dashboard.models import AdminReportTask
 from openedx_wikilearn_features.admin_dashboard.tasks import (
@@ -31,20 +36,25 @@ def send_report_ready_email(instance, report_link):
     except InvalidKeyError:
         courses = []
 
-    if len(courses) > 1:
-        courses_names = list()
-        for course in courses:
-            courses_names.append(f'"{course.display_name}"')
-        courses_names_str = ", ".join(courses_names)
-        course_msg = f"the courses {courses_names_str}"
-    elif len(courses) == 1:
-        course_msg = f'the course "{courses[0].display_name}"'
-    else:
-        course_msg = f"all courses"
+    language = UserPreference.get_value(instance.requester, LANGUAGE_KEY) or settings.LANGUAGE_CODE
 
-    email_msg = 'The "{}" report you requested for {} is ready.'.format(report_type, course_msg)
-    data = {"report_link":  report_link, "email_msg": email_msg}
-    send_report_ready_email_task.delay("report_ready", data, "", [email])
+    # This runs outside a request, so no language is active; translate eagerly because the
+    # message is passed to Celery.
+    with override(language):
+        if courses:
+            course_names = ", ".join(f'"{course.display_name}"' for course in courses)
+            email_msg = ngettext(
+                'The "{report_type}" report you requested for the course {course_names} is ready.',
+                'The "{report_type}" report you requested for the courses {course_names} is ready.',
+                len(courses),
+            ).format(report_type=report_type, course_names=course_names)
+        else:
+            email_msg = _('The "{report_type}" report you requested for all courses is ready.').format(
+                report_type=report_type
+            )
+
+    data = {"report_link": report_link, "email_msg": email_msg}
+    send_report_ready_email_task.delay("report_ready", data, "", [email], language)
 
 
 @receiver(post_save, sender=AdminReportTask)

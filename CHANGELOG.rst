@@ -24,6 +24,8 @@ Fixed
 
 * Count a course as completed when the learner passed it, not only when their
   letter grade is "Pass", so courses with custom grade cutoffs are counted.
+* Make the "report ready" email sentence translatable and send the email in the
+  requester's preferred language instead of always in English.
 
 1.0.1 – 2026-07-07
 **********************************************
