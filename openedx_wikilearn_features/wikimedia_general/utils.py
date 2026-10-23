@@ -181,7 +181,7 @@ def is_course_completed(user, course_key):
     if isinstance(course_key, str):
         course_key = CourseKey.from_string(course_key)
     try:
-        return CourseGradeFactory().read(user, course_key=course_key).passed
+        return bool(CourseGradeFactory().read(user, course_key=course_key).passed)
     except Exception:
         log.info(f"Unable to read course grade for user {user} and course {course_key}")
         return False

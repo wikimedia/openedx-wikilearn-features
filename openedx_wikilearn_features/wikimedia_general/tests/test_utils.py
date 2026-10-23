@@ -28,6 +28,10 @@ class IsCourseCompletedTest(TestCase):
         self._grade(mock_factory, passed=False, letter_grade=None)
         self.assertFalse(is_course_completed(MagicMock(), COURSE_ID))
 
+    def test_passed_none_returns_false(self, mock_factory):
+        self._grade(mock_factory, passed=None, letter_grade=None)
+        self.assertIs(is_course_completed(MagicMock(), COURSE_ID), False)
+
     def test_grade_read_error(self, mock_factory):
         mock_factory.return_value.read.side_effect = Exception("boom")
         self.assertFalse(is_course_completed(MagicMock(), COURSE_ID))
