@@ -4,6 +4,7 @@ Views for wikimedia_general v0 API(s)
 
 from django.contrib.auth.decorators import login_required
 from lms.djangoapps.courseware.courses import get_course_by_id
+from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from openedx.core.djangoapps.lang_pref.api import header_language_selector_is_enabled, released_languages
 from rest_framework import generics, permissions, status
@@ -14,6 +15,7 @@ from openedx_wikilearn_features.wikimedia_general.api.v0.utils import (
     get_authenticated_header_tabs,
     get_unauthenticated_header_tabs,
 )
+from openedx_wikilearn_features.wikimedia_general.utils import get_course_members, is_course_member
 
 from .serializers import TopicSerializer
 
@@ -126,3 +128,48 @@ def create_topic(request):
         status=status.HTTP_400_BAD_REQUEST
     )
 
+
+class MentionUsersView(generics.GenericAPIView):
+    """
+    API to search the members of a course that can be mentioned in its discussions.
+
+    GET /wikimedia_general/api/v0/mention_users/<course_id>/?search=<query>
+    Response:
+        {
+            "results": [
+                {
+                    "username": String
+                },
+                ...
+            ]
+        }
+
+    Only members of the course (active enrollment or course team) can call it, and only
+    other members of the course are returned.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            course_key = CourseKey.from_string(kwargs.get("course_key_string"))
+        except InvalidKeyError:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if not is_course_member(request.user, course_key):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        search = request.GET.get("search", "").strip()
+        if not search:
+            return Response({"results": []}, status=status.HTTP_200_OK)
+
+        usernames = (
+            get_course_members(course_key)
+            .filter(username__icontains=search)
+            .exclude(pk=request.user.pk)
+            .order_by("username")
+            .values_list("username", flat=True)
+        )
+        return Response(
+            {"results": [{"username": username} for username in usernames]},
+            status=status.HTTP_200_OK,
+        )

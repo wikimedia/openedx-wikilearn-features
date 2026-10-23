@@ -6,6 +6,7 @@ from django.conf import settings
 from django.urls import re_path
 
 from openedx_wikilearn_features.wikimedia_general.api.v0.views import (
+    MentionUsersView,
     RetrieveLMSTabs,
     RetrieveWikiMetaData,
     create_topic,
@@ -37,4 +38,9 @@ urlpatterns = [
         name="course_font",
     ),
     re_path(r"topics", create_topic, name="create_topic"),
+    re_path(
+        rf"^mention_users/{settings.COURSE_KEY_PATTERN}/$",
+        MentionUsersView.as_view(),
+        name="mention_users",
+    ),
 ]

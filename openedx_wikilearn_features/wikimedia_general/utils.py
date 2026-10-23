@@ -1,5 +1,4 @@
 import copy
-import html
 import logging
 import operator
 from datetime import datetime, timedelta
@@ -39,6 +38,7 @@ from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.contentstor
 from openedx_wikilearn_features.wikimedia_general.djangoapps_patches.instructor_task.patches import (
     EnhancedSubtaskStatus,
 )
+from openedx_wikilearn_features.wikimedia_general.mentions import extract_mentioned_usernames
 from openedx_wikilearn_features.wikimedia_general.models import Topic
 
 log = logging.getLogger(__name__)
@@ -132,27 +132,42 @@ def get_course_users_with_preference(post_id):
     return users_list
 
 
-def get_mentioned_users_list(input_string, users_list=None):
-    input_string = html.unescape(input_string)
-    if not users_list:
-        users_list = []
+def get_course_members(course_key):
+    """
+    Return the active users who have an active enrollment in the course or are on its course team.
+    """
+    return User.objects.filter(
+        Q(courseenrollment__course_id=course_key, courseenrollment__is_active=True)
+        | Q(
+            courseaccessrole__course_id=course_key,
+            courseaccessrole__role__in=[CourseStaffRole.ROLE, CourseInstructorRole.ROLE],
+        ),
+        is_active=True,
+    ).distinct()
 
-    start_index = input_string.find("@")
-    if start_index == -1:
-        return users_list
-    else:
-        end_index = input_string[start_index:].find(" ")
-        name = input_string[start_index:][:end_index]
 
-        try:
-            user = User.objects.get(username=name[1:])  # remove @ from name
-            users_list.append(user)
-        except User.DoesNotExist:
-            log.error("Unable to find mentioned thread user with name: {}".format(name))
+def is_course_member(user, course_key):
+    """
+    Return whether the user has an active enrollment in the course or is on its course team.
+    """
+    return get_course_members(course_key).filter(pk=user.pk).exists()
 
-        # remove tagged name from string and search for next tagged name
-        remianing_string = input_string.replace(name, "")
-        return get_mentioned_users_list(remianing_string, users_list)
+
+def get_mentioned_users_list(post_body, course_key):
+    """
+    Return the course members mentioned in the post body. Mentions of anyone else are ignored.
+    """
+    usernames = extract_mentioned_usernames(post_body)
+    if not usernames:
+        return []
+
+    users = list(get_course_members(course_key).filter(username__in=usernames))
+    found = {user.username for user in users}
+    for username in usernames:
+        if username not in found:
+            log.info("Not notifying mentioned user @%s: not a member of course %s", username, course_key)
+
+    return users
 
 
 def get_user_enrollments_course_keys(user):
