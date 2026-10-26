@@ -1,6 +1,5 @@
 from logging import getLogger
 
-import markdown
 from celery import shared_task
 from celery_utils.logged_task import LoggedTask
 from django.contrib.auth.models import User
@@ -29,17 +28,14 @@ log = getLogger(__name__)
 
 
 @shared_task(base=LoggedTask)
-def send_thread_mention_email_task(post_body, context, is_thread):
+def send_thread_mention_email_task(post_body, context, is_thread, course_id=None):
     log.info("Initiated task to send thread mention notifications.")
 
-    # convert markdown post_body to html
-    processed_post_body = markdown.markdown(post_body)
+    if not course_id:
+        log.info("Not sending thread mention notifications: no course id.")
+        return
 
-    # Replace few chars to handle cases i.e "<h1>@username</h1>" or <h1>@username/n</h1> so it will be easy
-    # to retrieve mentioned usernames as usernames will be in between '@' and ' ' characters in processed_post_body.
-    processed_post_body = processed_post_body.replace("\n", " ").replace("</", " ")
-
-    users_list = get_mentioned_users_list(processed_post_body)
+    users_list = get_mentioned_users_list(post_body, CourseKey.from_string(course_id))
 
     if users_list:
         receipients = [user.email for user in users_list]

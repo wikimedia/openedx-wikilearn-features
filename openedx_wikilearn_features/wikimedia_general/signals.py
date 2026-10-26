@@ -160,4 +160,4 @@ def send_thread_mention_email_notification(sender, user, post, **kwargs):
         update_context_with_thread(context, post.thread)
         update_context_with_comment(context, post)
     message_context = build_discussion_notification_context(context)
-    send_thread_mention_email_task.delay(post.body, message_context, is_thread)
+    send_thread_mention_email_task.delay(post.body, message_context, is_thread, str(course_key))
