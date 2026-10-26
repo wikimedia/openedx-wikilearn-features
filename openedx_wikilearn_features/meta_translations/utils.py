@@ -82,10 +82,10 @@ def update_course_to_source(course_key):
         log.info('Start converting course with id: {} to Source'.format(str(course_key)))
         # update all underlying component's flag to source
         course = get_course_by_id(course_key)
-        log.info('Check and update all underlying blocks to Source'.format(str(course_key)))
+        log.info('Check and update all underlying blocks of course {} to Source'.format(str(course_key)))
         for course_block in CourseBlock.objects.filter(course_id=course_key):
             course_block.update_flag_to_source(course.language)
-            log.info('Update course block with id: {} to Source'.format(str(course_key)))
+            log.info('Update course block with id: {} to Source'.format(str(course_block.block_id)))
         translation_link.delete()
         log.info('Course Flag with id: {} has been successfully updated to Source'.format(str(course_key)))
     except CourseTranslation.DoesNotExist:

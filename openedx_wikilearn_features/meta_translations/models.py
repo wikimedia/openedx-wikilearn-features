@@ -412,7 +412,7 @@ class WikiTranslation(models.Model):
                 base_course_block_data = base_course_blocks_data.get(course_block__block_id__endswith=reference_key, data_type=key)
                 if base_course_block_data.course_block.deleted:
                     log.info("Unable to create mapping for reference key {} as source block state is deleted.".format(
-                        key, value, reference_key
+                        reference_key
                     ))
                     return
                 WikiTranslation.objects.create(

@@ -20,6 +20,13 @@ This file includes a history of past releases. Changes that were not yet added t
    This project adheres to Semantic Versioning (https://semver.org/).
 
 .. scriv-insert-here
+* Fix meta translations log messages that dropped or printed the wrong value.
+
+Fixed
+===== 
+
+* Count a course as completed when the learner passed it, not only when their
+  letter grade is "Pass", so courses with custom grade cutoffs are counted.
 
 1.0.1 – 2026-07-07
 **********************************************

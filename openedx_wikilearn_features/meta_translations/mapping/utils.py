@@ -278,7 +278,7 @@ def course_blocks_mapping(course_key):
         check_and_map_course_blocks(course_outline, course_key, base_course_key)
 
     base_course_key = None
-    log.info("Starting course blocks mapping on course_id: ".format(str(course_key)))
+    log.info("Starting course blocks mapping on course_id: {}".format(str(course_key)))
 
     # check if course is translated re-run or base-course
     try:
