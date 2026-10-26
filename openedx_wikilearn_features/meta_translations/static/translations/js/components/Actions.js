@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import Select from 'react-select';
 import useUpdate from '../hooks/useUpdate';
+import '../../css/actions.css';
 
 function Actions (props) {
 
