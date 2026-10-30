@@ -196,6 +196,6 @@ def task_enrollment_activity_report(entry_id, xmodule_instance_args, user_id):
 
 
 @shared_task(base=LoggedTask)
-def send_report_ready_email_task(msg_class_key, context, subject, email):
+def send_report_ready_email_task(msg_class_key, context, subject, email, language="en"):
     TASK_LOG.info("Initiated task to send admin report ready notifications.")
-    send_notification(msg_class_key, context, subject, email)
+    send_notification(msg_class_key, context, subject, email, language=language)

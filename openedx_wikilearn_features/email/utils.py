@@ -106,18 +106,18 @@ def send_weekly_digest_ace_message(request_user, request_site, dest_email, notif
             return False
 
 
-def send_ace_message(request_user, request_site, dest_email, context, message_class):
+def send_ace_message(request_user, request_site, dest_email, context, message_class, language="en"):
     with emulate_http_request(site=request_site, user=request_user):
         message = message_class().personalize(
             recipient=Recipient(lms_user_id=0, email_address=dest_email),
-            language="en",
+            language=language,
             user_context=context,
         )
         logger.info("Sending email notification with context %s", context)
         ace.send(message)
 
 
-def send_notification(message_type, data, subject, dest_emails, request_user=None, current_site=None):
+def send_notification(message_type, data, subject, dest_emails, request_user=None, current_site=None, language="en"):
     """
     Send an email
     Arguments:
@@ -125,6 +125,7 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
         data - Dict containing context/data for the template
         subject - Email subject
         dest_emails - List of destination emails
+        language - Language code the email is rendered in
     Returns:
         a boolean variable indicating email response.
         if email is successfully send to all dest emails -> return True otherwise return false.
@@ -169,7 +170,7 @@ def send_notification(message_type, data, subject, dest_emails, request_user=Non
     for email in dest_emails:
         message_context.update({"email": email})
         try:
-            send_ace_message(request_user, current_site, email, message_context, message_class)
+            send_ace_message(request_user, current_site, email, message_context, message_class, language)
             logger.info('Email has been sent to "%s" for content %s.', email, content)
         except Exception as e:
             logger.error('Unable to send an email to %s for content "%s"', email, content)
