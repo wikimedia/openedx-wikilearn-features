@@ -278,8 +278,8 @@ class Command(BaseCommand):
         Send translations to the Meta Server
         """
         base_courses = []
-        if options.get('base-course-key'):
-            base_courses = [CourseKey.from_string(base_courses)]
+        if options.get('base_course_key'):
+            base_courses = [CourseKey.from_string(options['base_course_key'])]
         
         data_list = self._get_request_data_list(base_courses)
         if options.get('commit'):

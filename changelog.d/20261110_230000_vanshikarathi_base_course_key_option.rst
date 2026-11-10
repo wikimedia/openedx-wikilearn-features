@@ -1,0 +1,1 @@
+- [Bugfix] Make the ``--base-course-key`` option of ``sync_untranslated_strings_to_meta_from_edx`` limit the sync to that course instead of being ignored. (by @vanshikarathi)
