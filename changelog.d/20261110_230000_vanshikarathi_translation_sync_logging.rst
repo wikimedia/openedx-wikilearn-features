@@ -1,0 +1,1 @@
+- [Improvement] Summarise translation sync results with counts of synced, skipped and failed blocks, and move per-block logs to debug level. (by @vanshikarathi)

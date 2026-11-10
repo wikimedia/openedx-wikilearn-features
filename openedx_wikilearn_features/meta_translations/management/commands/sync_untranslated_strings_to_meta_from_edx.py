@@ -41,7 +41,8 @@ class Command(BaseCommand):
     help = 'Command to send untranslated strings to Meta server for translation'
     _RESULT = {
         "updated_blocks_count": 0,
-        "success_updated_pages_count": 0
+        "success_updated_pages_count": 0,
+        "failed_pages": [],
     }
 
     def add_arguments(self, parser):
@@ -70,6 +71,23 @@ class Command(BaseCommand):
         ))
         log.info('Total number of updated blocks: {}'.format(self._RESULT.get("updated_blocks_count")))
         log.info('Total blocks updated successfully: {}'.format(self._RESULT.get("success_updated_pages_count")))
+
+        failed_pages = self._RESULT.get("failed_pages", [])
+        if failed_pages:
+            log.error('Total blocks failed to update: {}. They will be sent again on the next run:\n{}'.format(
+                len(failed_pages), "\n".join(failed_pages)
+            ))
+        else:
+            log.info('Total blocks failed to update: 0')
+
+    def _get_failed_titles(self, titles, responses):
+        """
+        Returns the titles of the pages whose update request did not succeed.
+        """
+        return [
+            title for title, response in zip(titles, responses)
+            if not response or response.get("result", "").lower() != "success"
+        ]
 
     def _create_request_dict_for_block(self, base_course, block, block_data, base_course_language, base_course_name, base_course_description):
         """
@@ -194,7 +212,7 @@ class Command(BaseCommand):
             if  index != len(tasks)-1:
                 delay = delay_in_sec - execution_time
                 if delay > 0:
-                    log.info(f'Waiting for a next request -> sleep({round(delay,2)})')
+                    log.debug(f'Waiting for a next request -> sleep({round(delay,2)})')
                     time.sleep(delay)
         return responses
 
@@ -212,7 +230,7 @@ class Command(BaseCommand):
 
                 response_title =  response.get("title", "")
                 response_title_prefix = response.get("title_prefix", "")
-                log.info("Processing success response with title: {}".format(response_title))
+                log.debug("Processing success response with title: {}".format(response_title))
                 title = response_title.split("/")
                 if len(title) >= 3:
                     try:
@@ -225,7 +243,7 @@ class Command(BaseCommand):
                         course_block_data_items.update(
                             content_updated=False, mapping_updated=False
                         )
-                        log.info("{} block data items for block: {} flags have been reset.".format(
+                        log.debug("{} block data items for block: {} flags have been reset.".format(
                             len(course_block_data_items), block_id,
                         ))
                         success_responses_count += 1
@@ -256,12 +274,14 @@ class Command(BaseCommand):
             meta_client = WikiMetaClient()
             await meta_client.login_request(session)
             csrf_token = await meta_client.fetch_csrf_token(session)
+            titles = [component["title"] for component in data_list]
             tasks = self._get_tasks_to_updated_data_on_wiki_meta(data_list, meta_client, session, csrf_token)
             responses = await self._request_meta_tasks_in_sequential_with_delay(
                 tasks,
                 delay_in_sec=meta_client._API_REQUEST_DELAY,
             )
             self._reset_mapping_updated_and_content_updated(responses)
+            self._RESULT.update({"failed_pages": self._get_failed_titles(titles, responses)})
 
     def update_info(self):
         """

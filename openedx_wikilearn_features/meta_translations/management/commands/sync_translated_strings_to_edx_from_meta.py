@@ -26,6 +26,11 @@ from openedx_wikilearn_features.meta_translations.utils import is_block_translat
 log = getLogger(__name__)
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
+UPDATED = "Updated"
+NO_KEY_TRANSLATED = "Successfully fetched but no key is translated or reviewed"
+NOT_TRANSLATED = "Successfully fetched but status is not translated or reviewed"
+UNCHANGED = "Successfully fetched but commits are same"
+
 class Command(BaseCommand):
     """
     This command will check and send updated block strings to meta server for translations.
@@ -61,9 +66,18 @@ class Command(BaseCommand):
         log.info("--------------------- WIKI META FETCHED PAGES RESULT- {} ---------------------".format(
             datetime.now().date().strftime("%m-%d-%Y")
         ))
-        log.info("Request data dict: {}".format(json.dumps(request_data_dict, indent=4)))
-        log.info("Updated Translations: {}".format(json.dumps(self._UPDATED_TRANSLATIONS, indent=4)))
-        log.info("Updated Blocks: {}".format(self._UPDATED_BLOCKS))
+        log.debug("Request data dict: {}".format(json.dumps(request_data_dict, indent=4)))
+        log.debug("Updated Translations: {}".format(json.dumps(self._UPDATED_TRANSLATIONS, indent=4)))
+        log.debug("Updated Blocks: {}".format(self._UPDATED_BLOCKS))
+
+        messages = Counter(item["message"] for item in self._UPDATED_TRANSLATIONS)
+        log.info("Translations updated: %s", messages[UPDATED])
+        log.info("Translations fetched without changes: %s", messages[UNCHANGED])
+        log.info(
+            "Translations fetched but not translated or reviewed yet: %s",
+            messages[NO_KEY_TRANSLATED] + messages[NOT_TRANSLATED],
+        )
+        log.info("Blocks updated: %s", len(self._UPDATED_BLOCKS))
 
         # A run in which Meta refused most requests still updates whatever did get through,
         # so success counts alone read as a healthy run. Report the failures explicitly.
@@ -183,13 +197,13 @@ class Command(BaseCommand):
         translation_obj.target_block.applied = False
         translation_obj.target_block.save()
 
-        log.info("Translations have been updated for block_id: {}, data_type: {}, target_language: {}".format(
+        log.debug("Translations have been updated for block_id: {}, data_type: {}, target_language: {}".format(
             str(translation_obj.target_block.block_id),
             source_block_data.data_type,
             target_lang_code
         ))
         self._update_result_list(
-            str(translation_obj.target_block.block_id), source_block_data.data_type, target_lang_code, "Updated", status
+            str(translation_obj.target_block.block_id), source_block_data.data_type, target_lang_code, UPDATED, status
         )
         self._UPDATED_BLOCKS.add(str(translation_obj.target_block.block_id))
 
@@ -243,7 +257,7 @@ class Command(BaseCommand):
                     else:
                         self._update_result_list(
                             str(translation_obj.target_block.block_id), source_block_data.data_type, target_language_code,
-                            "Successfully fetched but no key is translated or reviewed", key_status, 
+                            NO_KEY_TRANSLATED, key_status,
                         )
                 else:
                     key_response = response_data.get(source_block_data.data_type, {})
@@ -255,7 +269,7 @@ class Command(BaseCommand):
                     else:
                         self._update_result_list(
                             str(translation_obj.target_block.block_id), source_block_data.data_type, target_language_code,
-                            "Successfully fetched but status is not translated or reviewed", key_status,
+                            NOT_TRANSLATED, key_status,
                         )
             else:
                 # Compare commits of tranlsations with existing db commits -> only update translations if commits are updated.
@@ -294,7 +308,7 @@ class Command(BaseCommand):
                     translation_obj.save()
                     self._update_result_list(
                         str(translation_obj.target_block.block_id), source_block_data.data_type, target_language_code,
-                        "Successfully fetched but commits are same", key_status,
+                        UNCHANGED, key_status,
                     )
 
     def _update_response_translations_in_db(self, data_dict, responses):
@@ -352,13 +366,14 @@ class Command(BaseCommand):
                 target_language_code
             )
 
-            if not response_source_block or not response_source_block or not response_source_block or not target_block_id:
-                log.error("Error in updating translations in db due to invalid response or data_dict.")
+            if not response_source_block or not target_block_id:
+                self._FAILED_REQUESTS += 1
                 log.error(
-                    "Response details => response_source_block: {}, target_language_code: {}, response_data: {}".format(
-                        response_source_block, response_source_block, response_source_block
-                    )
+                    "Error in updating translations in db due to invalid response or data_dict. "
+                    "response_source_block: %s, target_language_code: %s",
+                    response_source_block, target_language_code,
                 )
+                log.debug("Response data: %s", response_data)
                 continue
 
             self._check_and_update_translations(response_data, target_block_id, target_language_code)
@@ -458,7 +473,7 @@ class Command(BaseCommand):
                     block.translated = is_block_translated(block)
                     block.save()
 
-                    log.info(
+                    log.debug(
                         "CourseBlock translated status have been updated for block_id {} translated: {}".format(
                             block.block_id, is_translated,
                         )
