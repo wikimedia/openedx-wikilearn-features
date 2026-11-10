@@ -1,0 +1,1 @@
+- [Bugfix] Send @mention emails in course discussions to the mentioned course members, reading usernames from the mention plugin's markup so names with spaces work. Add an endpoint to search course members for mentions. (by @vanshikarathi)
