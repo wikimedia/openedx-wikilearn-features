@@ -1,0 +1,1 @@
+- [Bugfix] Make the "report ready" email sentence translatable and send the email in the requester's preferred language instead of always in English. (by @vanshikarathi)
