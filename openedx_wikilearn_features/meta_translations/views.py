@@ -79,7 +79,7 @@ def render_translation_home(request):
         'select_rerun_course': _('Select Rerun Course'),
         'messages': {
                 'course_error': _('No Translated Course Found!'),
-                'translation_error': _('No Translations Found!, Please apply mapping.')
+                'translation_error': _('No translations found. Please apply mapping.')
             },
         'filter_my_courses': _('Filter My Courses'),
         'approve_button': {
@@ -88,7 +88,7 @@ def render_translation_home(request):
             'incomplete': _('Incomplete Translation'),
             'approve': _('Approve'),
             'approved': _('Approved'),
-            'error': _('Unable to approve this time, Please try again later.'),
+            'error': _('Unable to approve. Please try again later.'),
             'success': _("Congratulations! The translation is approved. It's also applied automatically to the Course Block")
         },
         'apply_button': {
@@ -96,7 +96,7 @@ def render_translation_home(request):
             'disabled': _('Translation is Disabled'),
             'applied': _('Applied'),
             'apply': _('Apply'),
-            'error': _('Unable to apply this time, Please try again later.'),
+            'error': _('Unable to apply. Please try again later.'),
             'success': _('Congratulations! The translation is applied to the Course Block')
         },
         'applied_badge': {
@@ -105,7 +105,7 @@ def render_translation_home(request):
         'approve_all_button': {
             'label': _('APPROVE ALL'),
             'not_found': _('No pending translations to be approved'),
-            'error': _('Unable to approve this time, Please try again later.'),
+            'error': _('Unable to approve. Please try again later.'),
             'success': _("Congratulations! Translations are approved. They're also applied automatically to the Course Blocks"),
         },
         'options_tags': {
@@ -115,7 +115,7 @@ def render_translation_home(request):
             'other': _('other'),
         },
         'errors': {
-            'fetch_transaltion': _('Unable to fetch translation this time, Please try again later.'),
+            'fetch_transaltion': _('Unable to fetch the translation. Please try again later.'),
             'fetch_courses': _('Unable to load Courses.'),
             'fetch_outline': _('Unable to load Course Outline.'),
             'fetch_content': _('Unable to load content.'),

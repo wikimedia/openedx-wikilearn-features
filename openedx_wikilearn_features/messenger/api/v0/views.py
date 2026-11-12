@@ -52,7 +52,7 @@ class UserSearchView(viewsets.ReadOnlyModelViewSet):
             return User.objects.filter(
                 username__icontains=query
             ).exclude(username=self.request.user.username)
-        raise NotFound(_('Search query param is required.'))
+        raise NotFound(_('A search term is required.'))
 
 
 class InboxView(viewsets.ModelViewSet):

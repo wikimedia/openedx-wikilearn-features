@@ -1,0 +1,1 @@
+- [Bugfix] Fix the wording of user-facing meta translations and messenger search error messages. (by @vanshikarathi)
