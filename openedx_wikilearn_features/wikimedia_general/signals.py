@@ -74,14 +74,55 @@ def upload_course_default_image(sender, instance, created, **kwargs):
         except Exception as e:
             logger.error("Error processing file for course %s: %s", course_key, str(e))
 
+# XBlocks the course authoring team wants enabled on every course by default.
+# Entries must match each XBlock's entry-point name (the string Studio stores
+# in a course's advanced_modules list). sortable, image-explorer and games are
+# installed via tutor-contrib-wikilearn's openedx-dockerfile-post-python-requirements
+# patch; done and staffgradedxblock ship with edx-platform and are listed here
+# only so they appear in Studio's advanced-component picker without a per-course
+# edit.
+DEFAULT_ADVANCED_MODULES = (
+    "sortable",
+    "done",
+    "staffgradedxblock",
+    "image-explorer",
+    "games",
+)
+
+
 @receiver(post_save, sender=CourseOverview)
-def add_default_sortable_advanced_course_module(sender, instance, created, **kwargs):
-    if created:
-        course_key = instance.id
+def add_default_advanced_modules(sender, instance, created, **kwargs):
+    """Enable the Wikilearn default advanced XBlocks on every new course so
+    authors don't have to add them to Studio -> Settings -> Advanced Settings
+    by hand. Appends rather than overwrites so any module already on the course
+    (for instance from a rerun source) is preserved.
+    """
+    if not created:
+        return
+    course_key = instance.id
+    try:
         course_block = modulestore().get_course(course_key)
-        setattr(course_block, "advanced_modules", ["sortable", "done", "staffgradedxblock"])
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Could not load course %s to set default advanced_modules", course_key
+        )
+        return
+    if course_block is None:
+        return
+
+    existing = list(course_block.advanced_modules or [])
+    to_add = [m for m in DEFAULT_ADVANCED_MODULES if m not in existing]
+    if not to_add:
+        return
+    course_block.advanced_modules = existing + to_add
+    try:
         modulestore().update_item(course_block, ModuleStoreEnum.UserID.system)
-        logger.info("Added default sortable advanced module for course %s", instance.id)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to persist default advanced_modules on course %s", course_key
+        )
+        return
+    logger.info("Added default advanced_modules %s to course %s", to_add, course_key)
 
 @receiver(post_save, sender=CourseOverview)
 def set_default_license(sender, instance, created, **kwargs):
